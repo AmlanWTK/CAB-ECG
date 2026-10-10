@@ -1,0 +1,58 @@
+# ---- Datasets: never committed (only data/README.md is tracked) ----
+data/*
+!data/README.md
+
+# ---- Model outputs, checkpoints, experiment logs ----
+outputs/
+checkpoints/
+runs/
+logs/
+wandb/
+mlruns/
+lightning_logs/
+
+# ---- Large data / model file types anywhere in the repo ----
+*.dat
+*.hea
+*.mat
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.pkl
+*.parquet
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# ---- Planning documents kept local (root folder only) ----
+/*.pdf
+/*.docx
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# ---- Secrets and local settings ----
+.env
+*.env
+
+# ---- Editors and OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

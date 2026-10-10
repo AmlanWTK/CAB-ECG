@@ -1,0 +1,17 @@
+# Same line endings on every machine (two Windows desktops, Linux tools)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.docx binary
+*.zip binary
+*.h5 binary
+*.hdf5 binary
+*.pt binary
+*.pth binary
