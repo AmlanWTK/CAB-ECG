@@ -18,6 +18,7 @@ An ECG classifier trained on PTB-XL (Germany) is imported by target sites in the
 ```
 CAB-ECG/
 ├── code/       source code
+├── scripts/    dataset download and check scripts (PowerShell)
 ├── data/       datasets (git-ignored, see data/README.md)
 ├── outputs/    checkpoints, embeddings, results (git-ignored, created when needed)
 └── README.md
@@ -30,7 +31,9 @@ All are open downloads with no account or approval. Cite them as their licences 
 | Dataset | Country | Role | Licence | Source |
 | --- | --- | --- | --- | --- |
 | PTB-XL v1.0.3 | Germany | Source | CC BY 4.0 | https://physionet.org/content/ptb-xl/1.0.3/ |
-| PhysioNet/CinC Challenge 2021 v1.0.3 (Georgia, Chapman-Shaoxing, Ningbo, CPSC) | USA, China | Targets | CC BY 4.0 | https://physionet.org/content/challenge-2021/1.0.3/ |
+| Georgia 12-lead ECG Challenge Database (PhysioNet/CinC Challenge 2021 v1.0.3) | USA | Target | CC BY 4.0 | https://physionet.org/content/challenge-2021/1.0.3/ |
+| Chapman-Shaoxing + Ningbo: "A large scale 12-lead ECG database for arrhythmia study" v1.0.0 | China | Targets | CC BY 4.0 | https://physionet.org/content/ecg-arrhythmia/1.0.0/ |
+| CPSC 2018 + CPSC-Extra (PhysioNet/CinC Challenge 2021 v1.0.3) | China | Target | CC BY 4.0 | https://physionet.org/content/challenge-2021/1.0.3/ |
 | CODE-15% | Brazil | Target | CC BY 4.0 | https://zenodo.org/records/4916206 |
 
 ## Setting up on the compute desktop
