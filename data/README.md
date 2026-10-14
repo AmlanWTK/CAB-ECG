@@ -10,7 +10,11 @@ data/
 ├── ecg_arrhythmia/   Chapman-Shaoxing + Ningbo, ecg-arrhythmia v1.0.0 (45,152 records)
 ├── challenge2021/    Challenge 2021 v1.0.3: Georgia (10,344), CPSC 2018 (6,877), CPSC-Extra (3,453)
 │                     plus dx_mapping_scored.csv, dx_mapping_unscored.csv, weights.csv
-└── code15/           CODE-15%: exams.csv + HDF5 parts
+├── code15/           CODE-15%: exams.csv + HDF5 parts
+└── sepsis2019/       PhysioNet/CinC Challenge 2019 v1.0.0
+    └── training/
+        ├── training_setA/   20,336 patients (hospital A, Beth Israel Deaconess)
+        └── training_setB/   20,000 patients (hospital B, Emory)
 ```
 
 ## How to download (Windows PowerShell, from the repository root)
@@ -52,3 +56,12 @@ powershell -ExecutionPolicy Bypass -File scripts\check_challenge2021.ps1
 ```
 powershell -ExecutionPolicy Bypass -File scripts\download_code15.ps1
 ```
+
+**Challenge 2019 sepsis data** (from PhysioNet's S3 mirror, 32 parallel downloads, resumable):
+
+```
+python scripts\download_sepsis2019.py
+```
+
+It ends with `RESULT: Challenge 2019 sepsis data is COMPLETE and intact.` If not, run it again;
+files already downloaded are skipped.

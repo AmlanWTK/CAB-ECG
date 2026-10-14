@@ -6,8 +6,12 @@
 # Usage, from the repository root:
 #   powershell -ExecutionPolicy Bypass -File scripts\download_code15.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\download_code15.ps1 -Parts 6
+#
+# Each zip is deleted once it has been unzipped successfully (to save disk space);
+# add -KeepZips to keep them. A small exams_partN.zip.extracted marker records that the
+# part is done, so it is never downloaded again.
 
-param([int]$Parts = 4)
+param([int]$Parts = 4, [switch]$KeepZips)
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -22,6 +26,10 @@ for ($i = 0; $i -lt $Parts; $i++) { $files += "exams_part$i.zip" }
 
 foreach ($f in $files) {
     $out = Join-Path $dest $f
+    if (Test-Path ($out + '.extracted')) {
+        Write-Host "Already downloaded and unzipped: $f"
+        continue
+    }
     if (Test-Path $out) {
         Write-Host "Already downloaded: $f"
         continue
@@ -41,11 +49,23 @@ foreach ($f in $files) {
 for ($i = 0; $i -lt $Parts; $i++) {
     $zip = Join-Path $dest "exams_part$i.zip"
     $marker = $zip + '.extracted'
-    if (Test-Path $marker) { continue }
+    if (Test-Path $marker) {
+        if ((-not $KeepZips) -and (Test-Path $zip)) {
+            Remove-Item -Path $zip -Force
+            Write-Host "  deleted exams_part$i.zip (already unzipped) to save space"
+        }
+        continue
+    }
     Write-Host "Unzipping exams_part$i.zip"
     & tar.exe -xf $zip -C $dest
-    if ($LASTEXITCODE -ne 0) { throw "Unzipping $zip failed." }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unzipping $zip failed. Delete that zip and run this script again to re-download it."
+    }
     New-Item -ItemType File -Force -Path $marker | Out-Null
+    if (-not $KeepZips) {
+        Remove-Item -Path $zip -Force
+        Write-Host "  deleted exams_part$i.zip to save space"
+    }
 }
 
 Write-Host ''

@@ -1,6 +1,13 @@
 # CAB-ECG
 
-**Calibrate, Adapt, or Block?** Label-budgeted remedy selection for imported ECG AI across four countries.
+**Calibrate, Adapt, or Block?** Label-budgeted remedy selection for imported clinical AI.
+
+The repository has two domains that share the same method:
+
+1. **Sepsis early warning in the ICU (book chapter, current priority).** A deterioration model trained at one hospital (PhysioNet/CinC Challenge 2019: Beth Israel Deaconess or Emory) is imported by the other. Code: `code/cabsepsis/`, `code/sepsis_*.py`.
+2. **12-lead ECG classification across four countries (second domain for the journal version).** Code: `code/cabecg/`, `code/build_index.py`, `code/audit_e0.py`.
+
+### ECG domain
 
 An ECG classifier trained on PTB-XL (Germany) is imported by target sites in the USA, China and Brazil. Using a small local labelled sample plus the site's unlabelled ECGs, the procedure chooses the cheapest remedy that restores pre-specified sensitivity and specificity, while controlling the probability of activating an unsafe model:
 
@@ -42,6 +49,38 @@ All are open downloads with no account or approval. Cite them as their licences 
 git clone https://github.com/AmlanWTK/CAB-ECG.git
 cd CAB-ECG
 python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
 Then download the datasets into `data/` following `data/README.md`.
+
+## E0: index and label audit
+
+```
+python code\build_index.py
+python code\audit_e0.py
+```
+
+`build_index.py` writes one row per record for all six cohorts to `outputs/index/index.csv`.
+`audit_e0.py` checks label codes, counts, prevalence, labelling conventions, durations and
+signal amplitudes, and writes `outputs/audit/E0_audit.md`.
+
+## Sepsis domain
+
+Download the PhysioNet/CinC Challenge 2019 training data (40,336 ICU patients, about 42 MB, CC BY 4.0):
+
+```
+python scripts\download_sepsis2019.py
+```
+
+E1/E2: each hospital's LightGBM model and modified qSOFA / SIRS / NEWS2 / MEWS on internal test
+patients, then each model imported unchanged to the other hospital:
+
+```
+python code\sepsis_e1_baselines.py
+```
+
+Writes `outputs/sepsis/E1_E2_results.csv` and `outputs/sepsis/E1_E2_report.md`. The first run reads
+all 40,336 files and caches them in `outputs/sepsis/rows.pkl`; later runs start from the cache.
