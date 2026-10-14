@@ -91,8 +91,9 @@ E2 with paired 95% bootstrap CIs and calibration of the imported model (needs E1
 python code\sepsis_e2_ci.py
 ```
 
-E3, certified Calibrate / Adapt / Block selection against AS-IS, LABEL-FREE, RECALIBRATE,
-FINE-TUNE and RETRAIN across label budgets (resumable; rerun the same command after a stop):
+E3 (v2), certified Calibrate / Adapt / Block selection against AS-IS, LABEL-FREE, RECALIBRATE,
+FINE-TUNE and RETRAIN across label budgets, for both cross-hospital directions plus a same-hospital
+positive control (resumable; rerun the same command after a stop):
 
 ```
 python code\sepsis_e3_cab.py --reps 2 --budgets 1000
@@ -100,4 +101,14 @@ python code\sepsis_e3_cab.py
 python code\sepsis_e3_cab.py --summary-only
 ```
 
-Outputs: `outputs/sepsis/E2_ci.md`, `outputs/sepsis/E3_report.md` and the CSVs beside them.
+Outputs: `outputs/sepsis/E2_ci.md`, `outputs/sepsis/E3v2_report.md` and the CSVs beside them.
+The v1 E3 files (`E3_*`) are kept for the record.
+
+Chapter figures (PDF + 300 dpi PNG) and tables from the E1, E2 and E3v2 outputs:
+
+```
+python code\sepsis_figures.py
+```
+
+Writes `outputs/sepsis/figures/` (fig1_transfer, fig2_cab_decisions, fig3_unsafe, fig4_overall,
+chapter_tables.md).
