@@ -17,6 +17,7 @@ Writes outputs/sepsis/E1_E2_results.csv and outputs/sepsis/E1_E2_report.md.
 """
 
 import json
+import warnings
 
 import lightgbm as lgb
 import numpy as np
@@ -24,13 +25,15 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from cabsepsis.data import REPO, load_all, patient_table
-from cabsepsis.features import build_features
+from cabsepsis.features import load_features
 from cabsepsis.metrics import evaluate, threshold_for_sensitivity
 from cabsepsis.scores import STANDARD_CUTOFFS, compute_scores
 
 OUT = REPO / "outputs" / "sepsis"
 SEED = 0
 TARGET_SENS = 0.80
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*eval_set.*")
 LGB_PARAMS = dict(objective="binary", learning_rate=0.05, num_leaves=63, min_child_samples=200,
                   colsample_bytree=0.8, subsample=0.8, subsample_freq=1, reg_lambda=1.0,
                   n_estimators=3000, n_jobs=-1, random_state=SEED, verbose=-1)
@@ -72,7 +75,7 @@ def main():
     df["split"] = df["pid"].map(split)
 
     print("Building features ...")
-    X, meta = build_features(df)
+    X, meta = load_features(df)
     meta = meta.assign(split=df["split"].to_numpy())
     scores = compute_scores(X)
 
@@ -117,7 +120,7 @@ def main():
 
     res = pd.DataFrame(results)
     cols = ["method", "trained_at", "evaluated_at", "setting", "threshold_rule", "AUROC_hourly",
-            "AUPRC_hourly", "utility", "sensitivity_patient", "median_lead_h", "alarms_per_patient_day",
+            "AUPRC_hourly", "utility", "sensitivity_patient", "median_lead_h", "detected_6h_early_pct", "alarms_per_patient_day",
             "alert_hours_pct"]
     res = res[cols]
     res.to_csv(OUT / "E1_E2_results.csv", index=False)

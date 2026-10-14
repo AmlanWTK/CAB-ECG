@@ -3,7 +3,9 @@
 Patient-level definitions (same window as the Challenge 2019 utility):
   onset t_s   = first labelled hour + 6
   detected    = any alert in [t_s - 12, t_s + 3]
-  lead time   = t_s - first alert hour in that window (hours of warning; >0 = before onset)
+  lead time   = t_s - first alert hour in that window (hours of warning; >0 = before onset).
+                It is capped at 12 h by the window, so also report detected_6h_early_pct:
+                septic patients alerted at least 6 h before onset.
   alarms/day  = new alarms (0 -> 1 transitions) per 24 patient-hours, over all patients
 """
 
@@ -124,6 +126,7 @@ def evaluate(meta, score, threshold):
         "utility": normalised_utility(meta, alerts),
         "sensitivity_patient": sep["detected"].mean(),
         "median_lead_h": sep["lead_h"].median(),
+        "detected_6h_early_pct": 100.0 * (sep["lead_h"] >= 6).mean(),
         "alarms_per_patient_day": det["alarms"].sum() / (det["hours"].sum() / 24.0),
         "alert_hours_pct": 100.0 * alerts.mean(),
     }

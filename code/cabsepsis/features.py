@@ -10,7 +10,9 @@ Unit1/Unit2 (ICU type) are deliberately left out so the model cannot learn site 
 import numpy as np
 import pandas as pd
 
-from .data import LABS, VITALS
+from .data import CACHE, LABS, VITALS
+
+FEATURE_CACHE = CACHE.parent / "features.pkl"
 
 
 def build_features(df):
@@ -42,4 +44,16 @@ def build_features(df):
     feats["shock_index"] = (ff["HR"] / ff["SBP"]).replace([np.inf, -np.inf], np.nan).astype(np.float32)
     X = pd.DataFrame(feats, index=df.index)
     meta = df[["pid", "site", "unit", "hour", "SepsisLabel"]]
+    return X, meta
+
+
+def load_features(df, use_cache=True):
+    """build_features with an on-disk cache. df must be sorted by pid, hour (as load_all + sort)."""
+    meta = df[["pid", "site", "unit", "hour", "SepsisLabel"]]
+    if use_cache and FEATURE_CACHE.exists():
+        X = pd.read_pickle(FEATURE_CACHE)
+        if len(X) == len(df) and X.index.equals(df.index):
+            return X, meta
+    X, meta = build_features(df)
+    X.to_pickle(FEATURE_CACHE)
     return X, meta
