@@ -84,3 +84,20 @@ python code\sepsis_e1_baselines.py
 
 Writes `outputs/sepsis/E1_E2_results.csv` and `outputs/sepsis/E1_E2_report.md`. The first run reads
 all 40,336 files and caches them in `outputs/sepsis/rows.pkl`; later runs start from the cache.
+
+E2 with paired 95% bootstrap CIs and calibration of the imported model (needs E1 models):
+
+```
+python code\sepsis_e2_ci.py
+```
+
+E3, certified Calibrate / Adapt / Block selection against AS-IS, LABEL-FREE, RECALIBRATE,
+FINE-TUNE and RETRAIN across label budgets (resumable; rerun the same command after a stop):
+
+```
+python code\sepsis_e3_cab.py --reps 2 --budgets 1000
+python code\sepsis_e3_cab.py
+python code\sepsis_e3_cab.py --summary-only
+```
+
+Outputs: `outputs/sepsis/E2_ci.md`, `outputs/sepsis/E3_report.md` and the CSVs beside them.

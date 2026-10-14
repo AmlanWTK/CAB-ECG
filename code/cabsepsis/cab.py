@@ -4,17 +4,19 @@ Safety criteria for a deployed sepsis alert at the target hospital (both patient
   sensitivity  share of septic patients alerted in [onset - 12 h, onset + 3 h]   must be >= s_star
   false-alert  share of non-septic patients alerted at least once during the stay must be <= f_star
 
-Selection (cheapest first, stop at the first remedy that passes):
-  KEEP       the imported model with its home threshold                 (tested on all n labels)
-  CALIBRATE  the imported model with a new local threshold              (chosen and tested on all n)
-  ADAPT      the imported model boosted further on local data (fit half), threshold chosen and
-             tested on the other half
-  BLOCK      nothing passed
+Selection, cheapest first:
+  Stage 1, imported model (all n labelled patients)
+    a threshold is certified for sensitivity by fixed-sequence testing over ordered thresholds
+    (Learn-then-Test, Angelopoulos et al.) with exact binomial tests; then false alerts are tested
+    at that threshold and, only if that passes, at the home threshold (fixed sequence again).
+      home threshold passes both        -> KEEP
+      certified threshold passes both   -> CALIBRATE
+  Stage 2, adapted model (trained on the fit half, tested on the other half) -> ADAPT
+  Nothing passed                                                           -> BLOCK
 
-Each remedy is tested at level alpha/3, split equally between its two criteria. Thresholds are
-picked by fixed-sequence testing over the ordered thresholds (Learn-then-Test, Angelopoulos et al.),
-using exact binomial (Clopper-Pearson) tests. By the union bound, the probability of switching on
-a remedy that fails either criterion at the target is at most alpha.
+Each stage spends alpha/2, split equally between sensitivity and false alerts, so every test runs
+at alpha/4. By the union bound, the probability of switching on anything that fails either
+criterion at the target is at most alpha.
 """
 
 import numpy as np
@@ -129,12 +131,12 @@ def cab_select(lab_all, lab_cert, src, ada, tau_home, s_star, f_star, alpha):
     lab_all / lab_cert: boolean patient masks (all labelled; certification half).
     src / ada: dicts with 'wmax', 'smax', 'septic' arrays for the imported and adapted models.
     Returns (remedy, threshold)."""
-    d = alpha / len(REMEDIES) / 2
+    d = alpha / 4
     sep, non = lab_all & src["septic"], lab_all & ~src["septic"]
-    if sens_test(src["wmax"][sep], tau_home, s_star, d) and fa_test(src["smax"][non], tau_home, f_star, d):
-        return "KEEP", tau_home
     tau = certified_threshold(src["wmax"][sep], s_star, d)
     if tau is not None and fa_test(src["smax"][non], tau, f_star, d):
+        if tau_home <= tau and fa_test(src["smax"][non], tau_home, f_star, d):
+            return "KEEP", tau_home
         return "CALIBRATE", tau
     if ada is not None:
         sep, non = lab_cert & ada["septic"], lab_cert & ~ada["septic"]
