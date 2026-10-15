@@ -19,6 +19,7 @@ An ECG classifier trained on PTB-XL (Germany) is imported by target sites in the
 
 - Commit code, configs and small text files only.
 - Never commit datasets, model checkpoints, embeddings or run outputs. They stay on the compute desktop in `data/` and `outputs/`, which are git-ignored.
+- Exception: small final results (reports, summary CSVs, figures, tables) are copied into the tracked `results/` folder by `python scripts\publish_results.py`, so they can be shared and pulled on other computers.
 
 ## Layout
 
@@ -27,7 +28,8 @@ CAB-ECG/
 ├── code/       source code
 ├── scripts/    dataset download and check scripts (PowerShell)
 ├── data/       datasets (git-ignored, see data/README.md)
-├── outputs/    checkpoints, embeddings, results (git-ignored, created when needed)
+├── outputs/    checkpoints, embeddings, run outputs (git-ignored, created when needed)
+├── results/    small final results copied from outputs/ (tracked)
 └── README.md
 ```
 
