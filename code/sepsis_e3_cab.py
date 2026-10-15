@@ -65,6 +65,21 @@ OUT = REPO / "outputs" / "sepsis"
 TAG = "E3v2"
 RUNS = OUT / f"{TAG}_runs.csv"
 ORACLE = OUT / f"{TAG}_oracle.csv"
+SAMPLING = {"septic_share": None, "septic_cap": 0.5}
+
+
+def configure(septic_share=None, septic_cap=0.5):
+    """Random labelling (default, the frozen E3v2 analysis) or enriched labelling (E4).
+
+    Enriched: of the n labelled patients, septic_share are septic (capped at septic_cap of the
+    septic patients in the pool, so enough remain to judge the result); the rest are non-septic.
+    Sensitivity is estimated only from septic patients and false alerts only from non-septic
+    patients, so the exact tests and the CAB guarantee are unchanged by the enrichment."""
+    global TAG, RUNS, ORACLE
+    SAMPLING.update(septic_share=septic_share, septic_cap=septic_cap)
+    TAG = "E3v2" if septic_share is None else f"E4enr{int(round(100 * septic_share))}"
+    RUNS = OUT / f"{TAG}_runs.csv"
+    ORACLE = OUT / f"{TAG}_oracle.csv"
 S_STARS = [0.75, 0.80, 0.85]
 MARGINS = [0.00, 0.05, 0.10]
 PRIMARY = (0.80, 0.05)
@@ -214,8 +229,18 @@ def prepare_direction(src, tgt, X, meta, df, boosters):
 def one_run(P, n, rep, alpha):
     sf, Xn, y = P["sf"], P["Xn"], P["y"]
     seed = {"A->B": 0, "B->A": 1, "A->A": 2, "B->B": 3}[f"{P['src']}->{P['tgt']}"] * 10_000_000 + n * 1000 + rep
+    share = SAMPLING["septic_share"]
+    if share is not None:
+        seed += 1_000_000_000
     rng = np.random.default_rng(seed)
-    lab_idx = rng.choice(P["pool"], size=n, replace=False)
+    if share is None:
+        lab_idx = rng.choice(P["pool"], size=n, replace=False)
+    else:
+        sep_pool = P["pool"][sf.septic[P["pool"]]]
+        non_pool = P["pool"][~sf.septic[P["pool"]]]
+        n_sep = min(int(round(share * n)), int(SAMPLING["septic_cap"] * len(sep_pool)))
+        lab_idx = np.concatenate([rng.choice(sep_pool, size=n_sep, replace=False),
+                                  rng.choice(non_pool, size=n - n_sep, replace=False)])
     lab = np.zeros(sf.n_patients, bool); lab[lab_idx] = True
     cert = np.zeros_like(lab)
     for grp in (lab_idx[sf.septic[lab_idx]], lab_idx[~sf.septic[lab_idx]]):
@@ -259,7 +284,8 @@ def one_run(P, n, rep, alpha):
                      "sens": np.nan, "false_alert": np.nan, "unsafe": False,
                      "apparent_sens": np.nan, "apparent_false_alert": np.nan, "silent_failure": False,
                      "utility": np.nan, "alarms_per_day": np.nan,
-                     "fallback_sens": np.nan, "fallback_false_alert": np.nan}
+                     "fallback_sens": np.nan, "fallback_false_alert": np.nan,
+                     "n_septic_labelled": int(sf.septic[lab].sum())}
                 if active:
                     sens, fa = rates(mdl["wmax"], mdl["smax"], sf.septic, comp, tau)
                     unsafe = bool(sens < s_star or fa > f_star)
@@ -287,18 +313,22 @@ def one_run(P, n, rep, alpha):
 def summarise():
     runs = pd.read_csv(RUNS)
     g = runs.groupby(["direction", "s_star", "margin", "n_labelled", "policy"], sort=True)
-    summ = g.agg(reps=("rep", "size"), activated_rate=("activated", "mean"),
+    summ = (g.agg(reps=("rep", "size"), activated_rate=("activated", "mean"),
                  unsafe_rate=("unsafe", "mean"), unsafe_k=("unsafe", "sum"),
                  silent_failure_rate=("silent_failure", "mean"), correct_rate=("correct", "mean"),
                  sens_mean=("sens", "mean"), false_alert_mean=("false_alert", "mean"),
-                 utility_mean=("utility", "mean"), alarms_per_day_mean=("alarms_per_day", "mean")).reset_index()
+                 utility_mean=("utility", "mean"), alarms_per_day_mean=("alarms_per_day", "mean"),
+                 septic_labelled=("n_septic_labelled", "mean") if "n_septic_labelled" in runs else ("rep", "size"))
+            .reset_index())
+    if "n_septic_labelled" not in runs:
+        summ = summ.drop(columns="septic_labelled")
     summ["unsafe_upper95"] = [cp_upper(int(k), int(n)) for k, n in zip(summ.unsafe_k, summ.reps)]
     summ.to_csv(OUT / f"{TAG}_summary.csv", index=False)
     cab = runs[runs.policy == "CAB"]
     mix = (cab.groupby(["direction", "s_star", "margin", "n_labelled"])["remedy"]
            .value_counts(normalize=True).unstack(fill_value=0).reset_index())
     oracle = pd.read_csv(ORACLE)
-    cols = ["n_labelled", "policy", "reps", "activated_rate", "unsafe_rate", "unsafe_upper95",
+    cols = ["n_labelled"] + (["septic_labelled"] if "septic_labelled" in summ else []) + ["policy", "reps", "activated_rate", "unsafe_rate", "unsafe_upper95",
             "silent_failure_rate", "correct_rate", "sens_mean", "false_alert_mean", "utility_mean",
             "alarms_per_day_mean"]
 
@@ -329,6 +359,20 @@ def summarise():
                      "labels_needed": int(ok.n_labelled.min()) if len(ok) else "> max budget"})
     lines += ["## Labels needed by CAB (P(correct remedy) >= 0.9 and P(unsafe) <= 0.05)", "", "```",
               pd.DataFrame(need).to_string(index=False), "```", ""]
+    base = OUT / "E3v2_summary.csv"
+    if TAG != "E3v2" and base.exists():
+        def first_ok(df):
+            out = {}
+            for (d, s, m), q in df[df.policy == "CAB"].groupby(["direction", "s_star", "margin"]):
+                ok = q[(q.correct_rate >= 0.9) & (q.unsafe_rate <= 0.05)]
+                out[(d, s, m)] = int(ok.n_labelled.min()) if len(ok) else None
+            return out
+        rnd, enr = first_ok(pd.read_csv(base)), first_ok(summ)
+        comp = pd.DataFrame([{"direction": k[0], "s_star": k[1], "margin": k[2],
+                              "random_labelling": rnd.get(k) or "> max", f"enriched ({TAG})": v or "> max"}
+                             for k, v in enr.items()])
+        lines += ["## Labels needed: random vs enriched labelling (CAB)", "", "```",
+                  comp.to_string(index=False), "```", ""]
 
     worst = (summ.groupby("policy").agg(max_unsafe_rate=("unsafe_rate", "max"),
                                         mean_unsafe_rate=("unsafe_rate", "mean"),
@@ -350,7 +394,13 @@ def main():
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--directions", default="A->B,B->A,A->A,B->B")
     ap.add_argument("--summary-only", action="store_true")
+    ap.add_argument("--septic-share", type=float, default=None,
+                    help="enriched labelling: share of labelled patients who are septic (e.g. 0.5); "
+                         "omit for random labelling (the frozen E3v2 analysis)")
+    ap.add_argument("--septic-cap", type=float, default=0.5,
+                    help="label at most this share of the pool's septic patients")
     a = ap.parse_args()
+    configure(a.septic_share, a.septic_cap)
     if a.summary_only:
         return summarise()
 
@@ -376,15 +426,18 @@ def main():
             orc = pd.concat([old[old.direction != d], orc], ignore_index=True)
         orc.to_csv(ORACLE, index=False)
         for n in budgets:
-            if n > 0.9 * len(P["pool"]):
+            n_non_pool = int((~P["sf"].septic[P["pool"]]).sum())
+            if n > 0.9 * len(P["pool"]) or (SAMPLING["septic_share"] is not None and n > 0.9 * n_non_pool):
                 print(f"  skip n={n}: pool has {len(P['pool'])} patients")
                 continue
             t0, k = time.time(), 0
             for rep in range(a.reps):
                 if (d, n, rep) in done:
                     continue
-                rows = one_run(P, n, rep, a.alpha)
-                pd.DataFrame(rows).to_csv(RUNS, mode="a", header=not RUNS.exists(), index=False)
+                rows = pd.DataFrame(one_run(P, n, rep, a.alpha))
+                if RUNS.exists():
+                    rows = rows.reindex(columns=pd.read_csv(RUNS, nrows=0).columns)
+                rows.to_csv(RUNS, mode="a", header=not RUNS.exists(), index=False)
                 k += 1
             print(f"  {d} n={n}: {k} new reps in {time.time() - t0:.0f}s")
     summarise()

@@ -26,7 +26,9 @@ An ECG classifier trained on PTB-XL (Germany) is imported by target sites in the
 ```
 CAB-ECG/
 ├── code/       source code
-├── scripts/    dataset download and check scripts (PowerShell)
+├── app/        CAB Sepsis Monitor, the prototype application (Streamlit)
+├── scripts/    dataset download, check and publish scripts
+├── tests/      checks that the app's gate matches the experiment code
 ├── data/       datasets (git-ignored, see data/README.md)
 ├── outputs/    checkpoints, embeddings, run outputs (git-ignored, created when needed)
 ├── results/    small final results copied from outputs/ (tracked)
@@ -114,3 +116,25 @@ python code\sepsis_figures.py
 
 Writes `outputs/sepsis/figures/` (fig1_transfer, fig2_cab_decisions, fig3_unsafe, fig4_overall,
 chapter_tables.md).
+
+## Application: CAB Sepsis Monitor (prototype)
+
+A research prototype of the monitoring application, built on the same code as the experiments:
+
+- **Deployment gate**: an imported model arrives with its vendor threshold; the gate runs CAB on the
+  hospital's labelled patients (random or sepsis-enriched) and shows the exact evidence for Keep,
+  Calibrate, Adapt or Block, plus a simulation check on the patients it never saw.
+- **Ward monitor**: replays real test-split ICU patients hour by hour with whatever the gate
+  switched on (or modified NEWS2 if it blocked): risk table, alerts, risk and vital-sign trends.
+
+On the compute desktop, from the repository root (needs the E1 models and the data caches):
+
+```
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe tests\test_deploy.py
+.venv\Scripts\python.exe -m streamlit run app\sepsis_monitor.py
+```
+
+The browser opens at http://localhost:8501. The first start loads the data (about a minute).
+`tests\test_deploy.py` confirms the app's gate makes exactly the same decisions as the experiment code.
+Not for clinical use.

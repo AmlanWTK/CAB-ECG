@@ -1,0 +1,13 @@
+# Theme for app/sepsis_monitor.py (read when Streamlit is started from the repository root).
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f1f0ec"
+textColor = "#1d1d1b"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
