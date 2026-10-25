@@ -40,10 +40,13 @@ Run from the repository root:
     python code\\sepsis_e3_cab.py --reps 2 --budgets 1000          (smoke test)
     python code\\sepsis_e3_cab.py                                   (full run, resumable)
     python code\\sepsis_e3_cab.py --summary-only                    (re-make the report)
+    python code\\sepsis_e3_cab.py --tag E3v2r100 --extend-from E3v2 --reps 100
+                                                   (100 reps; the frozen E3v2 files are untouched)
 Writes outputs/sepsis/E3v2_runs.csv, E3v2_oracle.csv, E3v2_summary.csv, E3v2_report.md.
 """
 
 import argparse
+import shutil
 import time
 import warnings
 
@@ -68,18 +71,30 @@ ORACLE = OUT / f"{TAG}_oracle.csv"
 SAMPLING = {"septic_share": None, "septic_cap": 0.5}
 
 
-def configure(septic_share=None, septic_cap=0.5):
+def configure(septic_share=None, septic_cap=0.5, tag=None, extend_from=None):
     """Random labelling (default, the frozen E3v2 analysis) or enriched labelling (E4).
 
     Enriched: of the n labelled patients, septic_share are septic (capped at septic_cap of the
     septic patients in the pool, so enough remain to judge the result); the rest are non-septic.
     Sensitivity is estimated only from septic patients and false alerts only from non-septic
-    patients, so the exact tests and the CAB guarantee are unchanged by the enrichment."""
+    patients, so the exact tests and the CAB guarantee are unchanged by the enrichment.
+
+    tag: write to <tag>_*.csv instead (e.g. E3v2r100), leaving the frozen files untouched.
+    extend_from: on the first run of a new tag, start from a copy of that tag's runs and oracle.
+    Seeds depend only on (direction, n, rep), so the copied reps are exactly the ones a fresh run
+    would produce and only the new reps are computed."""
     global TAG, RUNS, ORACLE
     SAMPLING.update(septic_share=septic_share, septic_cap=septic_cap)
-    TAG = "E3v2" if septic_share is None else f"E4enr{int(round(100 * septic_share))}"
+    TAG = tag or ("E3v2" if septic_share is None else f"E4enr{int(round(100 * septic_share))}")
     RUNS = OUT / f"{TAG}_runs.csv"
     ORACLE = OUT / f"{TAG}_oracle.csv"
+    if extend_from and extend_from != TAG and not RUNS.exists():
+        for kind in ("runs", "oracle"):
+            src = OUT / f"{extend_from}_{kind}.csv"
+            if not src.exists():
+                raise FileNotFoundError(f"--extend-from {extend_from}: {src} not found")
+            shutil.copy2(src, OUT / f"{TAG}_{kind}.csv")
+        print(f"Started {TAG} from a copy of {extend_from}")
 S_STARS = [0.75, 0.80, 0.85]
 MARGINS = [0.00, 0.05, 0.10]
 PRIMARY = (0.80, 0.05)
@@ -223,7 +238,7 @@ def prepare_direction(src, tgt, X, meta, df, boosters):
     print(f"  prepared {src}->{tgt} in {time.time() - t0:.0f}s; oracle (primary) = {oracle[PRIMARY]}")
     return dict(src=src, tgt=tgt, booster=booster, home=home, sf=sf, Xn=Xn, y=y, pool=pool,
                 eligible=eligible, src_raw=src_raw, srcd=srcd, news2=news2, tau_lf=tau_lf,
-                oracle=oracle, orows=orows)
+                oracle=oracle, orows=orows, ora_ad=ora_ad, test_mask=test_mask)
 
 
 def one_run(P, n, rep, alpha):
@@ -360,7 +375,7 @@ def summarise():
     lines += ["## Labels needed by CAB (P(correct remedy) >= 0.9 and P(unsafe) <= 0.05)", "", "```",
               pd.DataFrame(need).to_string(index=False), "```", ""]
     base = OUT / "E3v2_summary.csv"
-    if TAG != "E3v2" and base.exists():
+    if SAMPLING["septic_share"] is not None and base.exists():
         def first_ok(df):
             out = {}
             for (d, s, m), q in df[df.policy == "CAB"].groupby(["direction", "s_star", "margin"]):
@@ -399,8 +414,13 @@ def main():
                          "omit for random labelling (the frozen E3v2 analysis)")
     ap.add_argument("--septic-cap", type=float, default=0.5,
                     help="label at most this share of the pool's septic patients")
+    ap.add_argument("--tag", default=None,
+                    help="output name (default E3v2, or E4enr<share> when enriched), e.g. E3v2r100")
+    ap.add_argument("--extend-from", default=None,
+                    help="start a new --tag from a copy of this tag's runs, e.g. E3v2, so only the "
+                         "extra reps are computed")
     a = ap.parse_args()
-    configure(a.septic_share, a.septic_cap)
+    configure(a.septic_share, a.septic_cap, a.tag, a.extend_from)
     if a.summary_only:
         return summarise()
 

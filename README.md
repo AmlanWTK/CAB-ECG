@@ -108,6 +108,24 @@ python code\sepsis_e3_cab.py --summary-only
 Outputs: `outputs/sepsis/E2_ci.md`, `outputs/sepsis/E3v2_report.md` and the CSVs beside them.
 The v1 E3 files (`E3_*`) are kept for the record.
 
+Strengthening analyses for the chapter:
+
+```
+python code\sepsis_impact.py
+python code\sepsis_impact.py --tag E4enr50
+python code\sepsis_e5_labels.py
+python code\sepsis_e3_cab.py --tag E3v2r100 --extend-from E3v2 --reps 100
+```
+
+- `sepsis_impact.py`: missed septic patients, false alerts and alarms per 100 admissions for each
+  policy (primary criterion), with BLOCK falling back to modified NEWS2. Needs only the runs CSV.
+- `sepsis_e5_labels.py`: how many labels certification needs. An analytic calculator (septic and
+  non-septic patients needed by gap and prevalence; `--analytic-only` runs anywhere), checked by
+  simulating CAB's exact rule at budgets up to 32,000, and E3v2's labels needed as septic patients.
+- `--tag E3v2r100 --extend-from E3v2 --reps 100`: extends E3 to 100 repeats in new files, reusing
+  the 30 frozen repeats (same seeds), so only the extra 70 are computed. To run the home-hospital
+  control first, add `--directions A->A,B->B`.
+
 Chapter figures (PDF + 300 dpi PNG) and tables from the E1, E2 and E3v2 outputs:
 
 ```
