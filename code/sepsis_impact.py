@@ -30,7 +30,8 @@ import pandas as pd
 OUT = Path(__file__).resolve().parents[1] / "outputs" / "sepsis"
 PRIMARY = (0.80, 0.05)
 PREVALENCE = {"A": 0.088, "B": 0.057}
-POLICIES = ["AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "RETRAIN", "CAB"]
+POLICIES = ["AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "RETRAIN", "CLOSED-TEST",
+            "CERT-RECAL", "CAB"]
 
 
 def per_run(runs, prevalence, s_star):
@@ -41,7 +42,7 @@ def per_run(runs, prevalence, s_star):
     r["unsafe"] = r["unsafe"].astype(str).str.lower().eq("true")
     r["eff_sens"] = np.where(act, r["sens"], r["fallback_sens"])
     r["eff_fa"] = np.where(act, r["false_alert"], r["fallback_false_alert"])
-    pi = r["direction"].str.split("->").str[1].map(prevalence)
+    pi = r["direction"].str.split("->").str[1].str[0].map(prevalence)   # target site (A->B:MICU -> B)
     r["prevalence"] = pi
     r["missed_septic"] = 100 * pi * (1 - r["eff_sens"])
     r["excess_missed"] = 100 * pi * np.clip(s_star - r["eff_sens"], 0, None)
@@ -57,7 +58,8 @@ def summarise(r):
               alarms_per_day=("alarms_per_day", "mean")).reset_index()
     s["activated_pct"] *= 100
     s["unsafe_per_100"] *= 100
-    s["policy"] = pd.Categorical(s["policy"], POLICIES, ordered=True)
+    order = POLICIES + sorted(set(s["policy"]) - set(POLICIES))
+    s["policy"] = pd.Categorical(s["policy"], order, ordered=True)
     return s.sort_values(["direction", "n_labelled", "policy"]).reset_index(drop=True)
 
 

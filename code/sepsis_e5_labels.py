@@ -177,7 +177,7 @@ def part_b(reps, alpha, directions):
     import lightgbm as lgb
     from cabsepsis.data import load_all
     from cabsepsis.features import load_features
-    from sepsis_e3_cab import MARGINS, prepare_direction
+    from sepsis_e3_cab import MARGINS, parse_direction, prepare_direction
 
     print("Loading data and features ...")
     df = load_all().sort_values(["pid", "hour"]).reset_index(drop=True)
@@ -187,8 +187,8 @@ def part_b(reps, alpha, directions):
 
     sims, needs = [], []
     for d in directions:
-        src, tgt = d.split("->")
-        P = prepare_direction(src, tgt, X, meta, df, boosters)
+        src, tgt, unit = parse_direction(d)
+        P = prepare_direction(src, tgt, X, meta, df, boosters, unit)
         sf = P["sf"]
         base = P["test_mask"] if src != tgt else P["eligible"]
         septic = sf.septic[base]
