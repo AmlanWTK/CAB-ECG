@@ -3,7 +3,7 @@ data/*
 !data/README.md
 
 # ---- Model outputs, checkpoints, experiment logs ----
-outputs/
+
 checkpoints/
 runs/
 logs/
