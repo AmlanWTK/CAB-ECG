@@ -4,6 +4,22 @@ Submit by Fri 13 November 2026 to Dr Abeer Alsadoon (alsadoon.abeer@ieee.org).
 Required: structured as Background, Objective, Methodology, Results, Conclusion; at least 5 keywords; focus on practical application and implementation.
 Version 4: final numbers from the 100-repeat runs on one machine (E3mac100, E6units), E5 and E2.
 
+## Submitted version (in the call's template: CAB_Sepsis_Abstract.docx)
+
+Written by Amlan Sarkar from version 4, with one reordering in Results ("With as few as 250 labelled patients, CAB blocked…") to avoid a misreading. About 320 words, one paragraph with inline labels as in the template.
+
+**Calibrate, Adapt, or Block? A Certified Deployment Gate for Imported Sepsis Early-Warning Models**
+
+Amlan Sarkar¹* and Md Tobibul Islam¹
+¹ Department of Biomedical Engineering, Military Institute of Science and Technology (MIST), Dhaka, Bangladesh
+amlansarkar738@gmail.com, tobibul.islam@bme.mist.ac.bd
+
+**Background:** Clinical prediction models often lose performance when transferred to new hospitals or clinical units, yet receiving institutions lack a statistically grounded approach to determining whether an imported model can be deployed safely, requires updating, or should be rejected. **Objective:** This study proposes CAB (Calibrate, Adapt, or Block), a statistically certified deployment gate that uses locally labelled patient data to select the least invasive acceptable intervention for an imported sepsis early-warning model while controlling the risk of activating a model that fails prespecified safety requirements. **Methodology:** Using data from 40,336 intensive care patients across two US hospitals in the PhysioNet/CinC Challenge 2019 dataset, gradient-boosted sepsis prediction models were transferred between hospitals and into individual intensive care units across six scenarios. CAB evaluates model retention, recalibration, and adaptation in order of increasing intervention, permitting activation only when exact binomial tests certify that prespecified sensitivity and false-alert-rate requirements are satisfied; otherwise, deployment is blocked. CAB was compared with direct deployment, recalibration, fine-tuning, retraining, and classical statistical updating using 250–12,000 labelled patients, with 100 repetitions per setting. A prototype deployment and ward-monitoring application was also implemented. **Results:** Imported models exhibited direction-dependent safety failures, with sensitivity falling to 63% against an 80% target or false-alert rates doubling. Conventional and classical updating methods activated models that failed the prespecified safety requirements in 77–100% of runs, whereas CAB did so in fewer than 1%. With as few as 250 labelled patients, CAB blocked models that could not be safely repaired, and it certified the adapted model in 97% of runs with 12,000 labelled patients, including approximately 690 septic cases. A closed-form calculator estimated the required number of labelled patients to within 20%. **Conclusion:** CAB provides a systematic approach to evaluating and updating imported clinical prediction models before deployment. The findings highlight that deployment rejection is a legitimate safety decision and that local data collection should be planned according to the statistical evidence required for certification.
+
+**Keywords:** Sepsis Early Warning; Clinical Decision Support; Dataset Shift; Model Updating; Local Validation; Statistical Certification; Health Informatics.
+
+## Version 4 (longer working draft, kept for the chapter)
+
 ---
 
 **Title:** Calibrate, Adapt, or Block? A Certified Deployment Gate for Imported Sepsis Early-Warning Models
