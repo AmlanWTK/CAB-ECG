@@ -1,0 +1,169 @@
+Loading data and features ...
+Direction A->B: preparing ...
+  prepared A->B in 24s (20000 patients, 1142 septic); oracle (primary) = ADAPT
+  A->B n=250: 100 new reps in 270s
+  A->B n=500: 100 new reps in 347s
+  A->B n=1000: 100 new reps in 383s
+  A->B n=2000: 100 new reps in 403s
+  A->B n=4000: 100 new reps in 559s
+  A->B n=8000: 100 new reps in 829s
+  A->B n=12000: 100 new reps in 1135s
+# E9skip: Calibrate, Adapt, or Block?
+
+Each row: one direction, one label budget n (patients labelled at the target), one policy,
+averaged over repeated random label samples; judged on the target's unlabelled eligible patients.
+unsafe = switched on something that fails sensitivity >= s* or false-alert <= f* on those patients.
+silent failure = unsafe although its own data said it met both criteria.
+
+## Oracle remedy for each criterion
+
+```
+direction  s_star  margin  vendor_threshold  home_sens  home_fa  f_star oracle_remedy  keep_sens  keep_fa  calibrate_fa_at_s_star  adapt_fa_at_s_star  local_model_fa_at_s_star
+     A->B    0.75    0.00             0.030      0.791    0.310   0.310         ADAPT      0.611    0.231                   0.441               0.187                     0.189
+     A->B    0.75    0.05             0.030      0.791    0.310   0.360         ADAPT      0.611    0.231                   0.441               0.187                     0.189
+     A->B    0.75    0.10             0.030      0.791    0.310   0.410         ADAPT      0.611    0.231                   0.441               0.187                     0.189
+     A->B    0.80    0.00             0.023      0.838    0.401   0.401         ADAPT      0.672    0.313                   0.531               0.245                     0.275
+     A->B    0.80    0.05             0.023      0.838    0.401   0.451         ADAPT      0.672    0.313                   0.531               0.245                     0.275
+     A->B    0.80    0.10             0.023      0.838    0.401   0.501         ADAPT      0.672    0.313                   0.531               0.245                     0.275
+     A->B    0.85    0.00             0.019      0.883    0.484   0.484         ADAPT      0.722    0.389                   0.633               0.302                     0.335
+     A->B    0.85    0.05             0.019      0.883    0.484   0.534         ADAPT      0.722    0.389                   0.633               0.302                     0.335
+     A->B    0.85    0.10             0.019      0.883    0.484   0.584         ADAPT      0.722    0.389                   0.633               0.302                     0.335
+```
+
+## Primary criterion, A->B (s* = 0.8, margin = 0.05)
+
+```
+ n_labelled  septic_labelled      policy  reps  activated_rate  unsafe_rate  unsafe_upper95  silent_failure_rate correct_rate  sens_mean  false_alert_mean  utility_mean  alarms_per_day_mean
+        250            15.21       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.671             0.313         0.276                0.392
+        250            15.21         CAB   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        250            15.21    CAB-SKIP   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        250            15.21  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        250            15.21 CLOSED-TEST   100            1.00         1.00           1.000                 0.46         0.12      0.749             0.472         0.213                0.630
+        250            15.21   FINE-TUNE   100            1.00         1.00           1.000                 0.46          NaN      0.743             0.485         0.204                0.635
+        250            15.21  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.773             0.482         0.239                0.638
+        250            15.21 RECALIBRATE   100            1.00         1.00           1.000                 0.43          NaN      0.763             0.495         0.201                0.661
+        250            15.21     RETRAIN   100            1.00         1.00           1.000                 0.15          NaN      0.792             0.782        -0.215                0.833
+        500            27.81       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.672             0.313         0.277                0.392
+        500            27.81         CAB   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        500            27.81    CAB-SKIP   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        500            27.81  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+        500            27.81 CLOSED-TEST   100            1.00         1.00           1.000                 0.30         0.06      0.792             0.534         0.202                0.718
+        500            27.81   FINE-TUNE   100            1.00         1.00           1.000                 0.37          NaN      0.796             0.541         0.204                0.715
+        500            27.81  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.773             0.481         0.240                0.638
+        500            27.81 RECALIBRATE   100            1.00         1.00           1.000                 0.28          NaN      0.796             0.542         0.200                0.729
+        500            27.81     RETRAIN   100            1.00         1.00           1.000                 0.17          NaN      0.802             0.744        -0.021                0.839
+       1000            57.12       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.672             0.313         0.277                0.393
+       1000            57.12         CAB   100            0.01         0.00           0.030                 0.00         0.01      0.823             0.398         0.069                1.419
+       1000            57.12    CAB-SKIP   100            0.02         0.01           0.047                 0.01         0.02      0.774             0.343         0.071                1.408
+       1000            57.12  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+       1000            57.12 CLOSED-TEST   100            1.00         1.00           1.000                 0.17         0.04      0.807             0.548         0.203                0.741
+       1000            57.12   FINE-TUNE   100            1.00         0.93           0.967                 0.34          NaN      0.800             0.488         0.252                0.646
+       1000            57.12  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.774             0.482         0.240                0.638
+       1000            57.12 RECALIBRATE   100            1.00         1.00           1.000                 0.15          NaN      0.810             0.556         0.198                0.753
+       1000            57.12     RETRAIN   100            1.00         1.00           1.000                 0.19          NaN      0.808             0.644         0.117                0.782
+       2000           112.62       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.672             0.313         0.276                0.392
+       2000           112.62         CAB   100            0.02         0.01           0.047                 0.01         0.02      0.801             0.395         0.071                1.409
+       2000           112.62    CAB-SKIP   100            0.03         0.01           0.047                 0.01         0.03      0.811             0.402         0.073                1.401
+       2000           112.62  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.066                1.427
+       2000           112.62 CLOSED-TEST   100            1.00         0.98           0.996                 0.21         0.13      0.798             0.514         0.224                0.695
+       2000           112.62   FINE-TUNE   100            1.00         0.79           0.855                 0.52          NaN      0.791             0.401         0.301                0.536
+       2000           112.62  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.773             0.481         0.240                0.638
+       2000           112.62 RECALIBRATE   100            1.00         1.00           1.000                 0.15          NaN      0.802             0.538         0.212                0.727
+       2000           112.62     RETRAIN   100            1.00         0.89           0.937                 0.41          NaN      0.795             0.465         0.243                0.601
+       4000           229.14       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.674             0.313         0.277                0.393
+       4000           229.14         CAB   100            0.10         0.01           0.047                 0.01          0.1      0.839             0.411         0.090                1.341
+       4000           229.14    CAB-SKIP   100            0.16         0.01           0.047                 0.01         0.16      0.836             0.406         0.106                1.287
+       4000           229.14  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.064                1.428
+       4000           229.14 CLOSED-TEST   100            1.00         0.82           0.880                 0.15         0.31      0.808             0.489         0.247                0.666
+       4000           229.14   FINE-TUNE   100            1.00         0.48           0.567                 0.40          NaN      0.804             0.360         0.334                0.488
+       4000           229.14  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.776             0.481         0.240                0.639
+       4000           229.14 RECALIBRATE   100            1.00         1.00           1.000                 0.03          NaN      0.814             0.555         0.206                0.756
+       4000           229.14     RETRAIN   100            1.00         0.56           0.644                 0.46          NaN      0.799             0.382         0.305                0.504
+       8000           457.54       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.676             0.313         0.276                0.394
+       8000           457.54         CAB   100            0.70         0.03           0.076                 0.03          0.7      0.851             0.399         0.265                0.805
+       8000           457.54    CAB-SKIP   100            0.81         0.03           0.076                 0.03         0.81      0.847             0.390         0.299                0.697
+       8000           457.54  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.060                1.427
+       8000           457.54 CLOSED-TEST   100            1.00         0.56           0.644                 0.37         0.81      0.805             0.360         0.333                0.491
+       8000           457.54   FINE-TUNE   100            1.00         0.49           0.577                 0.49          NaN      0.802             0.313         0.361                0.428
+       8000           457.54  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.778             0.481         0.239                0.639
+       8000           457.54 RECALIBRATE   100            1.00         1.00           1.000                 0.00          NaN      0.816             0.551         0.208                0.753
+       8000           457.54     RETRAIN   100            1.00         0.45           0.537                 0.45          NaN      0.799             0.325         0.350                0.434
+      12000           682.90       AS-IS   100            1.00         1.00           1.000                 1.00          NaN      0.680             0.314         0.278                0.397
+      12000           682.90         CAB   100            0.97         0.02           0.062                 0.02         0.97      0.850             0.383         0.357                0.547
+      12000           682.90    CAB-SKIP   100            0.98         0.04           0.089                 0.04         0.98      0.845             0.372         0.362                0.525
+      12000           682.90  CERT-RECAL   100            0.00         0.00           0.030                 0.00          0.0        NaN               NaN         0.051                1.432
+      12000           682.90 CLOSED-TEST   100            1.00         0.45           0.537                 0.38         0.93      0.804             0.316         0.361                0.440
+      12000           682.90   FINE-TUNE   100            1.00         0.40           0.487                 0.40          NaN      0.802             0.299         0.372                0.417
+      12000           682.90  LABEL-FREE   100            1.00         1.00           1.000                 0.00          NaN      0.783             0.481         0.240                0.640
+      12000           682.90 RECALIBRATE   100            1.00         1.00           1.000                 0.00          NaN      0.827             0.553         0.210                0.758
+      12000           682.90     RETRAIN   100            1.00         0.49           0.577                 0.49          NaN      0.799             0.305         0.373                0.413
+```
+
+CAB decisions (share of runs):
+
+```
+direction  s_star  margin  n_labelled  ADAPT  BLOCK
+     A->B     0.8    0.05         250   0.00   1.00
+     A->B     0.8    0.05         500   0.00   1.00
+     A->B     0.8    0.05        1000   0.01   0.99
+     A->B     0.8    0.05        2000   0.02   0.98
+     A->B     0.8    0.05        4000   0.10   0.90
+     A->B     0.8    0.05        8000   0.70   0.30
+     A->B     0.8    0.05       12000   0.97   0.03
+```
+
+## CAB: share of runs choosing the oracle remedy, all criteria
+
+```
+n_labelled              250   500   1000  2000  4000  8000  12000
+direction s_star margin                                          
+A->B      0.75   0.00     0.0   0.0   0.0   0.0   0.0   0.1  0.45
+                 0.05     0.0   0.0  0.01  0.03  0.06   0.6  0.94
+                 0.10     0.0   0.0  0.02  0.07  0.26  0.92   1.0
+          0.80   0.00     0.0   0.0   0.0   0.0   0.0  0.17  0.52
+                 0.05     0.0   0.0  0.01  0.02   0.1   0.7  0.97
+                 0.10     0.0   0.0  0.01  0.07  0.29  0.91  0.99
+          0.85   0.00     0.0   0.0   0.0  0.01  0.01  0.11  0.43
+                 0.05     0.0   0.0   0.0  0.04  0.02  0.45   0.9
+                 0.10     0.0   0.0  0.01  0.06  0.15   0.8  0.99
+```
+
+## Labels needed by CAB (P(correct remedy) >= 0.9 and P(unsafe) <= 0.05)
+
+```
+direction  s_star  margin oracle labels_needed
+     A->B    0.75    0.00  ADAPT  > max budget
+     A->B    0.75    0.05  ADAPT         12000
+     A->B    0.75    0.10  ADAPT          8000
+     A->B    0.80    0.00  ADAPT  > max budget
+     A->B    0.80    0.05  ADAPT         12000
+     A->B    0.80    0.10  ADAPT          8000
+     A->B    0.85    0.00  ADAPT  > max budget
+     A->B    0.85    0.05  ADAPT         12000
+     A->B    0.85    0.10  ADAPT         12000
+```
+
+## Unsafe activation across ALL criteria, budgets and directions
+
+```
+     policy  max_unsafe_rate  mean_unsafe_rate  mean_silent_failure_rate
+      AS-IS             1.00             1.000                     1.000
+        CAB             0.04             0.008                     0.008
+   CAB-SKIP             0.06             0.012                     0.012
+ CERT-RECAL             0.00             0.000                     0.000
+CLOSED-TEST             1.00             0.838                     0.294
+  FINE-TUNE             1.00             0.744                     0.429
+ LABEL-FREE             1.00             0.997                     0.000
+RECALIBRATE             1.00             1.000                     0.148
+    RETRAIN             1.00             0.783                     0.321
+```
+
+ADAPT model chosen when CAB switched on ADAPT:
+
+```
+adapt_variant
+refit+boost    0.664
+boost          0.336
+```
+
+Wrote /Users/anindyarudra/Downloads/ECG_CAB/outputs/sepsis/E9skip_report.md

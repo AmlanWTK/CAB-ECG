@@ -31,6 +31,9 @@ Policies
   RETRAIN      new local model from the fit half, threshold hitting s_star on the other half
   CAB          KEEP / CALIBRATE / ADAPT / BLOCK with exact certification (cabsepsis/cab.py)
   CERT-RECAL   CAB without the ADAPT stage: KEEP / CALIBRATE / BLOCK              (ablation)
+  CAB-70       (--variants) CAB with 70% of the labels certifying and 30% fitting ADAPT
+  CAB-PLUS     (--variants) CAB-70, and Stage 1 skipped when a label-free screen shows a large shift
+  CAB-SKIP     (--variants or --skip-variant) the usual split, Stage 1 skipped by the same screen
   CLOSED-TEST  classical model updating (after Vergouwe et al. 2017): likelihood-ratio test of
                logistic recalibration against the model as delivered on all labelled hours, and a
                patient-bootstrap test of the adapted model against that recalibration on the
@@ -116,9 +119,16 @@ PRIMARY = (0.80, 0.05)
 VENDOR_DELTA = 0.05
 REFIT_DECAY = 0.9
 SEEDS = {"A->B": 0, "B->A": 1, "A->A": 2, "B->B": 3}   # other directions: from a hash of the name
-REMEDY_POLICIES = ("CAB", "CERT-RECAL", "CLOSED-TEST")    # policies that choose a remedy
+REMEDY_POLICIES = ("CAB", "CERT-RECAL", "CLOSED-TEST", "CAB-70", "CAB-PLUS", "CAB-SKIP")   # choose a remedy
 CLOSED_ALPHA = 0.05
 CLOSED_BOOT = 200
+# Label-saving variants (--variants): CAB-70 certifies on 70% of the labels (fits ADAPT on 30%);
+# CAB-PLUS also skips Stage 1 when a label-free screen shows a large shift: the share of the
+# target's unlabelled patient-hours alerted at the vendor threshold differs from the home share
+# by more than SKIP_RATIO (either way). The screen uses no labels, so the guarantee is unchanged.
+VARIANTS = {"on": False, "skip": False}
+CERT_FRAC_70 = 0.7
+SKIP_RATIO = 1.25
 
 ADAPT_PARAMS = dict(objective="binary", learning_rate=0.03, num_leaves=15, min_data_in_leaf=100,
                     feature_fraction=0.8, bagging_fraction=0.8, bagging_freq=1, lambda_l2=5.0,
@@ -266,6 +276,9 @@ def prepare_direction(src, tgt, X, meta, df, boosters, unit=None):
     news2 = compute_scores(X[mt])["NEWS2_mod"].to_numpy()
     pool_rows = np.isin(sf.row_patient, pool)
     tau_lf = {s: float(np.quantile(srcd["score"][pool_rows], 1 - home[s]["alert_frac"])) for s in S_STARS}
+    alert_ratio = {s: float((srcd["score"][pool_rows] >= home[s]["tau"]).mean() / home[s]["alert_frac"])
+                   for s in S_STARS}
+    skip = {s: bool(abs(np.log(r)) > np.log(SKIP_RATIO)) for s, r in alert_ratio.items()}
 
     # Oracle ADAPT / local models (cross-hospital only): target train split, early stop on val.
     ora_ad = ora_loc = None
@@ -303,7 +316,8 @@ def prepare_direction(src, tgt, X, meta, df, boosters, unit=None):
           f"{int(sf.septic.sum())} septic); oracle (primary) = {oracle[PRIMARY]}")
     return dict(src=src, tgt=tgt, name=name, booster=booster, home=home, sf=sf, Xn=Xn, y=y, pool=pool,
                 eligible=eligible, src_raw=src_raw, srcd=srcd, news2=news2, tau_lf=tau_lf,
-                oracle=oracle, orows=orows, ora_ad=ora_ad, test_mask=test_mask)
+                oracle=oracle, orows=orows, ora_ad=ora_ad, test_mask=test_mask,
+                alert_ratio=alert_ratio, skip=skip)
 
 
 def one_run(P, n, rep, alpha):
@@ -337,6 +351,15 @@ def one_run(P, n, rep, alpha):
     rt = model_dict(sf, b_rt.predict(Xn, num_iteration=b_rt.best_iteration or None))
     srcd = P["srcd"]
     closed = closed_test(sf, y, P["src_raw"], p_ad, lab, fit, cert, np.random.default_rng(seed + 7))
+    if VARIANTS["on"]:   # second split of the SAME labelled patients: 30% fit, 70% certify
+        rng70 = np.random.default_rng(seed + 11)
+        cert70 = np.zeros_like(lab)
+        for grp in (lab_idx[sf.septic[lab_idx]], lab_idx[~sf.septic[lab_idx]]):
+            g = rng70.permutation(grp)
+            cert70[g[: int(round(CERT_FRAC_70 * len(g)))]] = True
+        tr70, es70 = split_patients(np.flatnonzero(lab & ~cert70), sf.n_patients, seed + 11)
+        _, p_ad70 = fit_adapt(Xn, y, sf.row_patient, tr70, es70, P["booster"], P["src_raw"], seed + 11)
+        ada70 = model_dict(sf, p_ad70)
 
     rows = []
     for s_star in S_STARS:
@@ -361,6 +384,17 @@ def one_run(P, n, rep, alpha):
                                 "ADAPT": (ada, tau_ft, cert)}[closed],
             }
             chosen = {"CAB": remedy, "CERT-RECAL": cr_remedy, "CLOSED-TEST": closed}
+            if VARIANTS["on"] or VARIANTS["skip"]:   # usual 50/50 split, Stage 1 skipped by the screen
+                rs, ts = cab_select(lab, cert, srcd, ada, tau_home, s_star, f_star, alpha, P["skip"][s_star])
+                choices["CAB-SKIP"] = ({"KEEP": srcd, "CALIBRATE": srcd, "ADAPT": ada}.get(rs), ts,
+                                       cert if rs == "ADAPT" else lab)
+                chosen["CAB-SKIP"] = rs
+            if VARIANTS["on"]:
+                for name, skip in (("CAB-70", False), ("CAB-PLUS", P["skip"][s_star])):
+                    rv, tv = cab_select(lab, cert70, srcd, ada70, tau_home, s_star, f_star, alpha, skip)
+                    mv = {"KEEP": srcd, "CALIBRATE": srcd, "ADAPT": ada70}.get(rv)
+                    choices[name] = (mv, tv, cert70 if rv == "ADAPT" else lab)
+                    chosen[name] = rv
             oracle = P["oracle"][(s_star, margin)]
             primary = (s_star, margin) == PRIMARY
             for pol, (mdl, tau, own) in choices.items():
@@ -491,11 +525,16 @@ def main():
                     help="label at most this share of the pool's septic patients")
     ap.add_argument("--tag", default=None,
                     help="output name (default E3v2, or E4enr<share> when enriched), e.g. E3v2r100")
+    ap.add_argument("--variants", action="store_true",
+                    help="also run the label-saving CAB variants CAB-70 and CAB-PLUS (one extra ADAPT fit per run)")
+    ap.add_argument("--skip-variant", action="store_true",
+                    help="also run CAB-SKIP (usual split, Stage 1 skipped by the label-free screen); no extra fit")
     ap.add_argument("--extend-from", default=None,
                     help="start a new --tag from a copy of this tag's runs, e.g. E3v2, so only the "
                          "extra reps are computed")
     a = ap.parse_args()
     configure(a.septic_share, a.septic_cap, a.tag, a.extend_from)
+    VARIANTS["on"], VARIANTS["skip"] = a.variants, a.skip_variant
     if a.summary_only:
         return summarise()
 

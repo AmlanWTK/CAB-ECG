@@ -16,7 +16,8 @@ Selection, cheapest first:
 
 Each stage spends alpha/2, split equally between sensitivity and false alerts, so every test runs
 at alpha/4. By the union bound, the probability of switching on anything that fails either
-criterion at the target is at most alpha.
+criterion at the target is at most alpha. If Stage 1 is skipped by a rule fixed before any label
+is seen, Stage 2 spends the whole alpha (tests at alpha/2) and the same bound holds.
 """
 
 import numpy as np
@@ -125,20 +126,25 @@ def fa_test(smax_non, tau, f_star, delta):
     return bool(binom.cdf(f, k, f_star) <= delta)
 
 
-def cab_select(lab_all, lab_cert, src, ada, tau_home, s_star, f_star, alpha):
+def cab_select(lab_all, lab_cert, src, ada, tau_home, s_star, f_star, alpha, skip_stage1=False):
     """Run the certified selection.
 
     lab_all / lab_cert: boolean patient masks (all labelled; certification half).
     src / ada: dicts with 'wmax', 'smax', 'septic' arrays for the imported and adapted models.
+    skip_stage1: decided BEFORE labelling (e.g. from unlabelled data only); KEEP / CALIBRATE are
+    then not tested and the ADAPT stage gets the whole alpha (tests at alpha/2).
     Returns (remedy, threshold)."""
     d = alpha / 4
-    sep, non = lab_all & src["septic"], lab_all & ~src["septic"]
-    tau = certified_threshold(src["wmax"][sep], s_star, d)
-    if tau is not None and fa_test(src["smax"][non], tau, f_star, d):
-        if tau_home <= tau and fa_test(src["smax"][non], tau_home, f_star, d):
-            return "KEEP", tau_home
-        return "CALIBRATE", tau
+    if not skip_stage1:
+        sep, non = lab_all & src["septic"], lab_all & ~src["septic"]
+        tau = certified_threshold(src["wmax"][sep], s_star, d)
+        if tau is not None and fa_test(src["smax"][non], tau, f_star, d):
+            if tau_home <= tau and fa_test(src["smax"][non], tau_home, f_star, d):
+                return "KEEP", tau_home
+            return "CALIBRATE", tau
     if ada is not None:
+        if skip_stage1:
+            d = alpha / 2
         sep, non = lab_cert & ada["septic"], lab_cert & ~ada["septic"]
         tau = certified_threshold(ada["wmax"][sep], s_star, d)
         if tau is not None and fa_test(ada["smax"][non], tau, f_star, d):
