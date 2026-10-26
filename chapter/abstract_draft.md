@@ -8,7 +8,7 @@ Version 4: final numbers from the 100-repeat runs on one machine (E3mac100, E6un
 
 Written by Amlan Sarkar from version 4, with one reordering in Results ("With as few as 250 labelled patients, CAB blocked…") to avoid a misreading. About 320 words, one paragraph with inline labels as in the template.
 
-**Calibrate, Adapt, or Block? A Certified Deployment Gate for Imported Sepsis Early-Warning Models**
+**Calibrate, Adapt, or Block: A Statistically Certified Deployment Gate for Imported Sepsis Early-Warning Models**
 
 Amlan Sarkar¹* and Md Tobibul Islam¹
 ¹ Department of Biomedical Engineering, Military Institute of Science and Technology (MIST), Dhaka, Bangladesh
