@@ -34,6 +34,16 @@ Policies
   CAB-70       (--variants) CAB with 70% of the labels certifying and 30% fitting ADAPT
   CAB-PLUS     (--variants) CAB-70, and Stage 1 skipped when a label-free screen shows a large shift
   CAB-SKIP     (--variants or --skip-variant) the usual split, Stage 1 skipped by the same screen
+  Practical baselines (--baselines):
+  NAIVE-VAL    CAB's order (KEEP, CALIBRATE, ADAPT, BLOCK) judged on point estimates, no bounds
+  NAIVE-500    typical local validation: the first 500 labelled patients, point estimates,
+               KEEP / CALIBRATE / BLOCK
+  LABEL-SHIFT  imported model corrected for the target's sepsis prevalence, estimated from
+               unlabelled hours as home rate x (mean target prediction / mean home prediction);
+               vendor threshold; no labels, never blocks. (EM prior estimation, Saerens et al.
+               2002, diverged with this model: 0% for A->B, 35% for B->A.)
+  LTT-DIRECT   Learn-then-Test without CAB's order: imported and adapted models both certified on
+               the certification half (same tests), the certified one with fewer false alerts there
   CLOSED-TEST  classical model updating (after Vergouwe et al. 2017): likelihood-ratio test of
                logistic recalibration against the model as delivered on all labelled hours, and a
                patient-bootstrap test of the adapted model against that recalibration on the
@@ -72,7 +82,7 @@ from scipy.stats import beta, chi2
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
-from cabsepsis.cab import (SiteFrame, cab_select, certified_threshold, feasible,
+from cabsepsis.cab import (SiteFrame, cab_select, certified_threshold, fa_test, feasible,
                            largest_threshold_for, rates)
 from cabsepsis.data import REPO, load_all
 from cabsepsis.features import load_features
@@ -119,14 +129,16 @@ PRIMARY = (0.80, 0.05)
 VENDOR_DELTA = 0.05
 REFIT_DECAY = 0.9
 SEEDS = {"A->B": 0, "B->A": 1, "A->A": 2, "B->B": 3}   # other directions: from a hash of the name
-REMEDY_POLICIES = ("CAB", "CERT-RECAL", "CLOSED-TEST", "CAB-70", "CAB-PLUS", "CAB-SKIP")   # choose a remedy
+REMEDY_POLICIES = ("CAB", "CERT-RECAL", "CLOSED-TEST", "CAB-70", "CAB-PLUS", "CAB-SKIP",
+                   "NAIVE-VAL", "NAIVE-500", "LTT-DIRECT")   # policies that choose a remedy
 CLOSED_ALPHA = 0.05
 CLOSED_BOOT = 200
 # Label-saving variants (--variants): CAB-70 certifies on 70% of the labels (fits ADAPT on 30%);
 # CAB-PLUS also skips Stage 1 when a label-free screen shows a large shift: the share of the
 # target's unlabelled patient-hours alerted at the vendor threshold differs from the home share
 # by more than SKIP_RATIO (either way). The screen uses no labels, so the guarantee is unchanged.
-VARIANTS = {"on": False, "skip": False}
+VARIANTS = {"on": False, "skip": False, "baselines": False}
+NAIVE_N = 500
 CERT_FRAC_70 = 0.7
 SKIP_RATIO = 1.25
 
@@ -150,6 +162,49 @@ def parse_direction(d):
 def _row_loglik(y, p):
     p = np.clip(p, 1e-12, 1 - 1e-12)
     return y * np.log(p) + (1 - y) * np.log(1 - p)
+
+
+def prior_shift(p, pi_s, pi_t):
+    """Probabilities corrected from training prevalence pi_s to target prevalence pi_t."""
+    a = (pi_t / pi_s) * p
+    return a / (a + ((1 - pi_t) / (1 - pi_s)) * (1 - p))
+
+
+def point_ok(m, septic, mask, tau, s_star, f_star):
+    """Point-estimate check on the patients in mask (what a hospital without bounds would do)."""
+    if tau is None or not np.isfinite(tau):
+        return False
+    se, fa = rates(m["wmax"], m["smax"], septic, mask, tau)
+    return bool(se >= s_star and fa <= f_star)
+
+
+def naive_select(m_src, m_ada, septic, lab, cert, tau_home, s_star, f_star, adapt=True):
+    """Cheapest remedy whose point estimates meet both targets: KEEP, CALIBRATE, ADAPT, else BLOCK."""
+    if point_ok(m_src, septic, lab, tau_home, s_star, f_star):
+        return "KEEP", tau_home
+    t = largest_threshold_for(m_src["wmax"][lab & septic], s_star)
+    if point_ok(m_src, septic, lab, t, s_star, f_star):
+        return "CALIBRATE", t
+    if adapt and m_ada is not None:
+        t = largest_threshold_for(m_ada["wmax"][cert & septic], s_star)
+        if point_ok(m_ada, septic, cert, t, s_star, f_star):
+            return "ADAPT", t
+    return "BLOCK", np.nan
+
+
+def ltt_direct(m_src, m_ada, septic, cert, s_star, f_star, alpha):
+    """Learn-then-Test over both models on the certification half; keep the certified one with the
+    lower false-alert rate there. Same exact tests as CAB, alpha split over the two models."""
+    d = alpha / 4
+    best = None
+    for name, m in (("CALIBRATE", m_src), ("ADAPT", m_ada)):
+        sep, non = cert & septic, cert & ~septic
+        t = certified_threshold(m["wmax"][sep], s_star, d)
+        if t is not None and fa_test(m["smax"][non], t, f_star, d):
+            fa = float((m["smax"][non] >= t).mean())
+            if best is None or fa < best[2]:
+                best = (name, t, fa)
+    return (best[0], best[1]) if best else ("BLOCK", np.nan)
 
 
 def closed_test(sf, y, src_raw, ada_score, lab, fit, cert, rng):
@@ -279,6 +334,10 @@ def prepare_direction(src, tgt, X, meta, df, boosters, unit=None):
     alert_ratio = {s: float((srcd["score"][pool_rows] >= home[s]["tau"]).mean() / home[s]["alert_frac"])
                    for s in S_STARS}
     skip = {s: bool(abs(np.log(r)) > np.log(SKIP_RATIO)) for s, r in alert_ratio.items()}
+    # LABEL-SHIFT: prevalence correction from unlabelled target hours (no labels used)
+    pi_s = float(meta[mv]["SepsisLabel"].mean())
+    pi_t = pi_s * float(srcd["score"][pool_rows].mean()) / float(pv.mean())
+    lsd = model_dict(sf, prior_shift(srcd["score"], pi_s, pi_t))
 
     # Oracle ADAPT / local models (cross-hospital only): target train split, early stop on val.
     ora_ad = ora_loc = None
@@ -317,7 +376,7 @@ def prepare_direction(src, tgt, X, meta, df, boosters, unit=None):
     return dict(src=src, tgt=tgt, name=name, booster=booster, home=home, sf=sf, Xn=Xn, y=y, pool=pool,
                 eligible=eligible, src_raw=src_raw, srcd=srcd, news2=news2, tau_lf=tau_lf,
                 oracle=oracle, orows=orows, ora_ad=ora_ad, test_mask=test_mask,
-                alert_ratio=alert_ratio, skip=skip)
+                alert_ratio=alert_ratio, skip=skip, lsd=lsd, pi_s=pi_s, pi_t=pi_t)
 
 
 def one_run(P, n, rep, alpha):
@@ -350,6 +409,7 @@ def one_run(P, n, rep, alpha):
     b_rt = boost(Xn, y, tr_pt[sf.row_patient], es_pt[sf.row_patient], RETRAIN_PARAMS, seed)
     rt = model_dict(sf, b_rt.predict(Xn, num_iteration=b_rt.best_iteration or None))
     srcd = P["srcd"]
+    lab500 = np.zeros_like(lab); lab500[lab_idx[:NAIVE_N]] = True   # lab_idx is in random order
     closed = closed_test(sf, y, P["src_raw"], p_ad, lab, fit, cert, np.random.default_rng(seed + 7))
     if VARIANTS["on"]:   # second split of the SAME labelled patients: 30% fit, 70% certify
         rng70 = np.random.default_rng(seed + 11)
@@ -384,6 +444,16 @@ def one_run(P, n, rep, alpha):
                                 "ADAPT": (ada, tau_ft, cert)}[closed],
             }
             chosen = {"CAB": remedy, "CERT-RECAL": cr_remedy, "CLOSED-TEST": closed}
+            if VARIANTS["baselines"]:
+                pick = {"KEEP": srcd, "CALIBRATE": srcd, "ADAPT": ada}
+                rn, tn = naive_select(srcd, ada, sf.septic, lab, cert, tau_home, s_star, f_star)
+                choices["NAIVE-VAL"] = (pick.get(rn), tn, cert if rn == "ADAPT" else lab)
+                r5, t5 = naive_select(srcd, None, sf.septic, lab500, cert, tau_home, s_star, f_star, adapt=False)
+                choices["NAIVE-500"] = (pick.get(r5), t5, lab500)
+                rl, tl = ltt_direct(srcd, ada, sf.septic, cert, s_star, f_star, alpha)
+                choices["LTT-DIRECT"] = (pick.get(rl), tl, cert)
+                choices["LABEL-SHIFT"] = (P["lsd"], tau_home, None)
+                chosen.update({"NAIVE-VAL": rn, "NAIVE-500": r5, "LTT-DIRECT": rl})
             if VARIANTS["on"] or VARIANTS["skip"]:   # usual 50/50 split, Stage 1 skipped by the screen
                 rs, ts = cab_select(lab, cert, srcd, ada, tau_home, s_star, f_star, alpha, P["skip"][s_star])
                 choices["CAB-SKIP"] = ({"KEEP": srcd, "CALIBRATE": srcd, "ADAPT": ada}.get(rs), ts,
@@ -527,6 +597,8 @@ def main():
                     help="output name (default E3v2, or E4enr<share> when enriched), e.g. E3v2r100")
     ap.add_argument("--variants", action="store_true",
                     help="also run the label-saving CAB variants CAB-70 and CAB-PLUS (one extra ADAPT fit per run)")
+    ap.add_argument("--baselines", action="store_true",
+                    help="also run NAIVE-VAL, NAIVE-500, LABEL-SHIFT and LTT-DIRECT (no extra fits)")
     ap.add_argument("--skip-variant", action="store_true",
                     help="also run CAB-SKIP (usual split, Stage 1 skipped by the label-free screen); no extra fit")
     ap.add_argument("--extend-from", default=None,
@@ -534,7 +606,7 @@ def main():
                          "extra reps are computed")
     a = ap.parse_args()
     configure(a.septic_share, a.septic_cap, a.tag, a.extend_from)
-    VARIANTS["on"], VARIANTS["skip"] = a.variants, a.skip_variant
+    VARIANTS["on"], VARIANTS["skip"], VARIANTS["baselines"] = a.variants, a.skip_variant, a.baselines
     if a.summary_only:
         return summarise()
 
