@@ -65,6 +65,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def altair_chart(chart):
+    """Full-width chart on both newer Streamlit (width=) and 1.50 (use_container_width=)."""
+    try:
+        st.altair_chart(chart, width="stretch")
+    except TypeError:
+        st.altair_chart(chart, use_container_width=True)
+
+
 # ------------------------------------------------------------------------------------------ data
 @st.cache_resource(show_spinner="Loading ICU data and features (first start only, about a minute) ...")
 def load():
@@ -317,8 +325,7 @@ def page_ward(src, tgt):
         o = onset_hour(sf, p)
         risk = risk + alt.Chart(pd.DataFrame({"ICU hour": [o]})).mark_rule(color="#a8322d", strokeWidth=2) \
             .encode(x="ICU hour:Q")
-    st.altair_chart(risk.properties(height=220, title="Risk score (dashed line: alert threshold)"),
-                    width="stretch")
+    altair_chart(risk.properties(height=220, title="Risk score (dashed line: alert threshold)"))
 
     long = raw[[c for c, _ in VITALS_SHOWN]].ffill().assign(**{"ICU hour": np.arange(h)})
     long = long.melt("ICU hour", var_name="Vital", value_name="Value").dropna()
@@ -332,7 +339,7 @@ def page_ward(src, tgt):
            .facet(row=alt.Row("Vital:N", title=None, sort=[n for _, n in VITALS_SHOWN],
                               header=alt.Header(labelAngle=0, labelAlign="left", labelFontSize=12)))
            .resolve_scale(y="independent"))
-    st.altair_chart(vit, width="stretch")
+    altair_chart(vit)
     labs = raw[["Lactate", "WBC"]].assign(**{"ICU hour": np.arange(h)}).dropna(how="all", subset=["Lactate", "WBC"])
     if len(labs):
         st.caption("Laboratory results this stay")

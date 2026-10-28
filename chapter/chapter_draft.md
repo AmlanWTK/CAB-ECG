@@ -67,7 +67,7 @@ We evaluate CAB on the PhysioNet/CinC Challenge 2019 data [10]: two US hospitals
 2. **A comparison with eleven alternatives** that hospitals use or that the literature recommends. These include classical closed-testing updating, point-estimate local validation, prevalence correction and unordered Learn-then-Test (Section 4).
 3. **A closed-form label calculator** that tells a hospital, before it starts labelling, roughly how many septic and non-septic patients certification will need (Section 4.5).
 4. **Practical findings** for hospitals and vendors. Blocking is a legitimate and frequent outcome. Typical validation samples are too small to certify anything. The hospital's false-alert tolerance, not the vendor's threshold headroom, decides how many labels are needed (Sections 4.6 and 4.7).
-5. **A prototype application** that runs the gate on a hospital's labels and then monitors patients hour by hour with whatever the gate switched on. It is built on the same code as the experiments (Section 3.9).
+5. **A prototype application** that runs the gate on a hospital's labels and then monitors patients hour by hour with whatever the gate switched on. It is built on the same code as the experiments (Section 5).
 
 ---
 
@@ -325,12 +325,7 @@ A hospital can use the calculator in advance, with the vendor's published operat
 
 ### 3.9 Prototype application
 
-The gate is implemented in a research prototype, *CAB Sepsis Monitor*, built with Streamlit on the same code as the experiments. It has two parts:
-
-- **Deployment gate.** An imported model arrives with its vendor threshold, and the gate runs CAB on the hospital's labelled patients. It shows the exact evidence for keep, calibrate, adapt or block: detections, false alerts, p-values and the certified threshold.
-- **Ward monitor.** Test-set ICU patients are replayed hour by hour, using whatever the gate switched on, or modified NEWS2 if it blocked. The monitor shows a risk table, alerts, and risk and vital-sign trends.
-
-An automated test confirms that the application's gate makes exactly the same decisions as the experiment code on 3,000 random cases. The prototype is not intended for clinical use.
+The gate is implemented in a research prototype, *CAB Sepsis Monitor*, built on the same code as the experiments. It is described in Section 5.
 
 ### 3.10 Implementation
 
@@ -495,9 +490,48 @@ The practical rule follows. The hospital should set its tolerance deliberately b
 
 ---
 
-## 5 Discussion
+## 5 Application: the CAB Sepsis Monitor
 
-### 5.1 Principal findings
+The prototype shows how the gate fits into a hospital's adoption of an external model. A safety officer runs the gate before anything reaches a ward, and clinicians later see which alerting system is in use and whether it was certified. It has two screens. The figures show the Beth Israel model being installed at Emory, with a random sample of 12,000 labelled patients. This sample is drawn by the application, so it differs from the one in Table 2.
+
+### 5.1 Deployment gate
+
+The deployment gate (Fig. 10) collects the three things CAB needs and nothing more:
+
+- **The hospital's requirements.** Two sliders set the sensitivity target and the extra false-alert rate the hospital will accept above the vendor's home rate.
+- **Its labelled patients.** The user enters how many patients have been labelled and how they were chosen. Labels can be a random sample, or enriched so that half are septic. Enrichment keeps the tests valid, because sensitivity is estimated only from septic patients and false alerts only from non-septic ones.
+- **What arrived with the model.** A "vendor package" panel shows the shipped threshold, the vendor's home validation counts, and the limits these imply at this hospital.
+
+Pressing *Run the gate* shows three things:
+- the decision, as a coloured banner;
+- the evidence for each option, cheapest first: the counts, the exact bound and whether each test passed;
+- in this retrospective setting only, a simulation check of what each choice would have done on the patients the gate never saw.
+
+In Fig. 10, keeping the model fails, because its sensitivity can only be proven to be at least 62.3%. Recalibration proves 80% sensitivity but fails the false-alert test, with an upper bound of 63.2% against a limit of 45.1%. The adapted model passes both tests (80.2% and 37.1%).
+
+The simulation check shows why the proof matters. On 8,000 unseen patients, the adapted model detected 84.5% of septic patients and alerted 35.4% of non-septic patients. A simple, unproven recalibration that looked acceptable on the labelled patients would have alerted 55.6% of non-septic patients.
+
+### 5.2 Ward monitor
+
+The ward monitor (Fig. 11) replays held-out ICU patients hour by hour, using whatever the gate switched on. If the gate blocked, it uses modified NEWS2. A header states which alerting system is in use and whether the gate certified it.
+
+**The ward table** lists each bed with:
+- the current score relative to the alert threshold;
+- the alert status and how long the alert has been active;
+- a 24-hour trend.
+
+**The patient view** plots the risk score against the threshold, together with the main vital signs and laboratory results. A clinician can therefore see why an alert fired.
+
+### 5.3 Engineering
+
+- **One code path.** The application calls the same gate function as the experiments. An automated test confirms identical decisions on 3,000 random cases covering all four outcomes.
+- **Runs locally.** It runs on a single workstation, and no patient data leave it.
+- **The vendor package as a specification.** It states the minimum a vendor must supply for a hospital to run the gate: the model, its threshold and its home validation counts. Ideally the vendor also supplies the full operating curve, so that the hospital can plan its labels with the calculator.
+- **Not yet deployable.** Integration with an electronic health record, for example through HL7 FHIR, and prospective testing are needed before any clinical use. The prototype is not intended for clinical use.
+
+## 6 Discussion
+
+### 6.1 Principal findings
 
 Three findings stand out.
 
@@ -507,7 +541,7 @@ Three findings stand out.
 
 **A certified gate can keep the probability of unsafe activation below a chosen level with no assumptions about the shift.** CAB did so in every setting we examined, at three error levels. Its cost is explicit: it needs enough labels to prove safety, and when they are not available it blocks.
 
-### 5.2 Implications for hospitals and vendors
+### 6.2 Implications for hospitals and vendors
 
 **Blocking should be a planned outcome.** In our scenarios, blocking was the correct decision for one import direction, and the safe decision whenever labels were too few. A hospital adopting an external model should decide in advance what care it will provide if the model is blocked. Our analysis of bedside scores suggests that this fallback will not itself meet a strict false-alert requirement.
 
@@ -517,7 +551,7 @@ Three findings stand out.
 
 **Order saves labels.** Testing the unchanged model first, on all the labels, lets a hospital approve a model that needs no change with twice the evidence that an unordered procedure would have. This was visible in the home control.
 
-### 5.3 Limitations
+### 6.3 Limitations
 
 - **Two hospitals from one country.** The Challenge data come from two US hospitals and a single, retrospectively applied sepsis definition. Validation on a multi-hospital database such as eICU [18] is the natural next step.
 - **Random labelling.** The guarantee requires a random (or known-probability) sample of labelled patients. Labelling only patients that clinicians flagged, or only an early period before a seasonal change, would break it.
@@ -527,7 +561,7 @@ Three findings stand out.
 - **Conservativeness.** The union bound and exact tests make CAB conservative. Measured unsafe rates were about a fifth of the nominal level, which suggests power can be recovered.
 - **No monitoring after deployment.** The guarantee covers the decision at deployment, not drift afterwards.
 
-### 5.4 Future work
+### 6.4 Future work
 
 Four extensions follow directly:
 
@@ -542,7 +576,7 @@ Among the variations we tested, two ablations deserve mention:
 
 ---
 
-## 6 Conclusion
+## 7 Conclusion
 
 Importing a sepsis early-warning model is a decision with patient-safety consequences, and it can be made with a statistical guarantee. CAB tests the available remedies in order of intervention: keep, recalibrate, adapt. It switches on the first one whose sensitivity and false-alert rate are certified by exact tests, and blocks otherwise. In two hospitals and six import scenarios, CAB kept the rate of unsafe activation below the chosen level in every setting, while the alternatives did not. Its cost is the labels that proof requires. Hospitals should therefore plan for blocking, fix their false-alert tolerance before labelling, and size their local validation with a calculator, before they switch on a model built somewhere else.
 
@@ -575,8 +609,10 @@ The figure files are in `outputs/sepsis/figures/` (PDF for the publisher, 300 dp
 - **Fig. 7** (`fig6_labels`). Septic patients needed to certify sensitivity, by the true margin over the target.
 - **Fig. 8** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
 - **Fig. 9** (`fig8_tolerance`). Approval at home by the hospital's false-alert tolerance (models held fixed).
+- **Fig. 10** (`fig_app_gate`). The deployment gate of the prototype application: the hospital's requirements, its labelled patients and the vendor package (top); the decision, the evidence for each option, cheapest first, and the retrospective simulation check (bottom).
+- **Fig. 11** (`fig_app_ward`). The ward monitor, replaying ICU patients at hour 24 with the adapted model certified in Fig. 10: the ward table with each patient's score relative to the threshold, alert status and 24-hour trend, and one patient's risk trajectory against the alert threshold.
 
-> Length note: Springer's 15–20 pages leaves room for about six figures. Keep Figs. 1–4 and 6.
+> Length note: Springer's 15–20 pages leaves room for about eight figures. Keep Figs. 1–4, 6, 10 and 11.
 > Merge Figs. 7 and 9 into one two-panel figure, and move Figs. 5 and 8 to the supplement (with
 > Table 5 kept in the text).
 
