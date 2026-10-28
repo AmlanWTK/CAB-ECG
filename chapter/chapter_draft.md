@@ -77,7 +77,7 @@ We evaluate CAB on the PhysioNet/CinC Challenge 2019 data [10]: two US hospitals
 
 Rule-based bedside scores are widely used to flag deteriorating patients. Examples are the Systemic Inflammatory Response Syndrome (SIRS) criteria, the quick Sequential Organ Failure Assessment (qSOFA), the Modified Early Warning Score (MEWS) and the National Early Warning Score 2 (NEWS2) [11]. They are transparent and need no training data, but their discrimination for sepsis is modest.
 
-Machine-learning models trained on electronic health records do better at the hospital where they are built. The 2019 PhysioNet/Computing in Cardiology Challenge [10] made data from two hospitals openly available so that algorithms could be compared on the same footing. Its organisers deliberately held out a third hospital, and reported that performance fell there. Prospective deployment studies show that well-run sepsis alert systems can help [12]. External evaluations show that the same promise does not carry over automatically to new sites [4].
+Machine-learning models trained on electronic health records do better at the hospital where they are built. The 2019 PhysioNet/Computing in Cardiology Challenge [10] made data from two hospitals openly available so that algorithms could be compared on the same footing. Its organisers deliberately held out a third hospital, and reported that performance fell there. Prospective deployment studies show that well-run sepsis alert systems can help [12]. External evaluations show that the same promise does not carry over automatically to new sites [4]. Newer versions have not removed the problem. A prospective study of an updated commercial sepsis model at four US health systems reported good discrimination overall, but wide differences between institutions, a low positive predictive value and a heavy alert load, and its authors advised every adopting hospital to validate the model locally [20]. Evaluation design also matters: a model looks much better when alerts raised after clinicians have already started sepsis care are counted as successes [21]. In ICU data from three countries, a deep-learning model lost discrimination when moved to another database and regained part of it after fine-tuning on a small share of the new site's patients [22]. None of these studies tells a hospital, before go-live, how likely its chosen configuration is to break its own requirements.
 
 ### 2.2 Updating an imported model
 
@@ -94,7 +94,7 @@ These tools answer statistical questions about fit and precision. They do not bo
 
 ### 2.3 Distribution-free risk control
 
-Distribution-free predictive inference offers a different kind of guarantee. Risk-controlling prediction sets [9] and Learn-then-Test [8] calibrate a parameter of any black-box model, such as a threshold, so that a chosen risk is controlled with high probability. They need only the assumption that the calibration data are exchangeable with future data.
+Distribution-free predictive inference offers a different kind of guarantee. Risk-controlling prediction sets [9] and Learn-then-Test [8] calibrate a parameter of any black-box model, such as a threshold, so that a chosen risk is controlled with high probability. They need only the assumption that the calibration data are exchangeable with future data. Conformal risk control bounds the expected value of a monotone loss instead [23]. CAB needs the stronger, high-probability form, because a hospital decides once and lives with the result.
 
 Learn-then-Test casts calibration as multiple hypothesis testing, and uses fixed-sequence testing when the risk is monotone in the parameter. CAB uses this machinery and adds three things:
 
@@ -107,6 +107,12 @@ Learn-then-Test casts calibration as multiple hypothesis testing, and uses fixed
 When the outcome rate differs between hospitals but the relation between features and outcome does not (label shift), predicted probabilities can be corrected using unlabelled target data [14,15]. Covariate-shift methods reweight source data instead. Both depend on assumptions about the type of shift that cannot be checked without labels.
 
 We include a prevalence correction as a comparator, to test whether such a correction is enough in this setting.
+
+### 2.5 Regulatory context
+
+Regulators already expect the changes a hospital may need to be planned in advance. In the United States, the Food and Drug Administration's guidance on predetermined change control plans for AI-enabled device software lets a manufacturer obtain authorisation for specified future modifications, together with the methods used to develop, validate and implement them and an assessment of their impact [24]. In the European Union, the Artificial Intelligence Act treats AI that is a safety component of, or is itself, a medical device requiring third-party conformity assessment as high-risk [25]. For such systems, changes pre-determined by the provider at the initial assessment and recorded in the technical documentation do not count as a substantial modification (Article 43(4)), and providers must monitor performance after the system is on the market. A 2026 amendment moved the date from which these obligations apply to devices covered by Annex I to 2 August 2028 [26].
+
+Both frameworks therefore reward a change protocol that is written down before deployment and has stated acceptance criteria. CAB is such a protocol at the level of a single hospital: the remedies allowed, the order in which they are tried, the evidence each must meet and the default when none passes are all fixed before any local labels are seen.
 
 ---
 
@@ -582,6 +588,8 @@ Three findings stand out.
 
 **The hospital's tolerance matters more than the vendor's threshold.** Hospitals should state how many extra false alerts they will accept, because this one number moves the labels needed by an order of magnitude. Vendors can help most by publishing their full operating curve with confidence intervals, rather than one tuned threshold.
 
+**The gate fits existing change-control routes.** A vendor could list recalibration and local adaptation as pre-specified modifications in a change control plan or in the technical documentation, with CAB's tests as their acceptance criteria and blocking as the fallback [24,25]. The gate's output, the remedy chosen with its confidence bounds, is then a ready-made record for the regulator and for post-market monitoring. This is our reading of the frameworks, not regulatory advice, and whether a hospital-run test can serve as a manufacturer's acceptance test is a question for regulators.
+
 **Order saves labels.** Testing the unchanged model first, on all the labels, lets a hospital approve a model that needs no change with twice the evidence that an unordered procedure would have. This was visible in the home control.
 
 ### 6.3 Limitations
@@ -592,7 +600,7 @@ Three findings stand out.
 - **The safety criteria are a simplification.** They count detected patients within a fixed window. They do not weigh how early an alert comes, or the consequences of each missed case.
 - **Noisy judging in small settings.** Safety was judged on finite held-out patients, so in the settings with the fewest unlabelled septic patients the measured unsafe rate is itself noisy.
 - **Conservativeness.** The union bound and exact tests make CAB conservative. Measured unsafe rates were about a fifth of the nominal level, which suggests power can be recovered.
-- **No monitoring after deployment.** The guarantee covers the decision at deployment, not drift afterwards.
+- **No monitoring after deployment.** The guarantee covers the decision at deployment, not drift afterwards, which both regulatory frameworks expect to be monitored [24,25].
 
 ### 6.4 Future work
 
@@ -673,3 +681,10 @@ Supplementary figures (not in the chapter body):
 17. Ke G, Meng Q, Finley T, et al. LightGBM: a highly efficient gradient boosting decision tree. In: Advances in Neural Information Processing Systems 30 (NeurIPS). 2017.
 18. Pollard TJ, Johnson AEW, Raffa JD, et al. The eICU Collaborative Research Database, a freely available multi-center database for critical care research. Sci Data. 2018;5:180178.
 19. Angelopoulos AN, Bates S, Fannjiang C, Jordan MI, Zrnic T. Prediction-powered inference. Science. 2023;382(6671):669–674.
+20. Wong A, Currey D, Schwinne M, et al. Multicenter prospective validation of an updated proprietary sepsis prediction model. JAMA Netw Open. 2026;9(2):e260181. doi:10.1001/jamanetworkopen.2026.0181
+21. Kamran F, Tjandra D, Heiler A, et al. Evaluation of sepsis prediction models before onset of treatment. NEJM AI. 2024;1(3). doi:10.1056/AIoa2300032
+22. Moor M, Bennett N, Plečko D, et al. Predicting sepsis using deep learning across international sites: a retrospective development and validation study. eClinicalMedicine. 2023;62:102124. doi:10.1016/j.eclinm.2023.102124
+23. Angelopoulos AN, Bates S, Fisch A, Lei L, Schuster T. Conformal risk control. In: Proc. 12th Int. Conf. Learning Representations (ICLR). 2024.
+24. U.S. Food and Drug Administration. Marketing submission recommendations for a predetermined change control plan for artificial intelligence-enabled device software functions: guidance for industry and Food and Drug Administration staff. Final guidance, December 2024 (current version August 2025). Docket FDA-2022-D-2628.
+25. Regulation (EU) 2024/1689 of the European Parliament and of the Council of 13 June 2024 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act). Off J Eur Union. 2024;L 2024/1689.
+26. Regulation (EU) 2026/1744 of the European Parliament and of the Council of 8 July 2026 amending Regulation (EU) 2024/1689 (Digital Omnibus on AI). Off J Eur Union. 24 July 2026.

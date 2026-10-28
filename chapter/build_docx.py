@@ -19,6 +19,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "chapter" / "chapter_draft.md"
@@ -26,6 +27,7 @@ OUT = ROOT / "chapter" / "CAB_Sepsis_Chapter.docx"
 FIGS = ROOT / "outputs" / "sepsis" / "figures"
 FONT = "Times New Roman"
 FIG_WIDTH = Cm(15.5)
+FIG_MAX_HEIGHT = Cm(14.5)   # tall app screenshots are scaled down to this height
 
 
 def set_font(style, size, bold=None, italic=None):
@@ -128,6 +130,15 @@ def add_table(doc, rows):
             p = t.cell(i, j).paragraphs[0]
             p.paragraph_format.space_after = Pt(1)
             add_runs(p, c, size=8.5, bold=(i == 0))
+    # column widths in proportion to the longest entry, so long text columns are not squeezed
+    weight = [max(min(max(len(r[j]) for r in cells), 60),
+                  1.8 * max(len(w) for r in cells for w in r[j].split() or [""])) + 2
+              for j in range(len(cells[0]))]
+    t.autofit = False
+    for j, wt in enumerate(weight):
+        t.columns[j].width = int(Cm(16) * wt / sum(weight))
+        for row in t.rows:
+            row.cells[j].width = int(Cm(16) * wt / sum(weight))
     borders(t)
     doc.add_paragraph().paragraph_format.space_after = Pt(2)
 
@@ -166,7 +177,8 @@ def add_figure(doc, num, file, caption):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.keep_with_next = True
-    p.add_run().add_picture(str(FIGS / f"{file}.png"), width=FIG_WIDTH)
+    w, h = Image.open(FIGS / f"{file}.png").size
+    p.add_run().add_picture(str(FIGS / f"{file}.png"), width=min(FIG_WIDTH, int(FIG_MAX_HEIGHT * w / h)))
     c = doc.add_paragraph(style="Caption")
     r = c.add_run(f"Fig. {num} "); r.bold = True
     add_runs(c, caption)
