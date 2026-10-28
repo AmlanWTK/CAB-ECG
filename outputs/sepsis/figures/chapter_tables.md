@@ -45,136 +45,180 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Beth Israel → Beth Israel (control) | 250 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.395 |
 | Beth Israel → Beth Israel (control) | 250 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.104 |
-| Beth Israel → Beth Israel (control) | 250 | FINE-TUNE | 100.0 | 86.7 | 66.7 |  | 0.361 |
-| Beth Israel → Beth Israel (control) | 250 | LABEL-FREE | 100.0 | 6.7 | 0.0 |  | 0.396 |
-| Beth Israel → Beth Israel (control) | 250 | RECALIBRATE | 100.0 | 83.3 | 60.0 |  | 0.384 |
-| Beth Israel → Beth Israel (control) | 250 | RETRAIN | 100.0 | 100.0 | 3.3 |  | 0.071 |
+| Beth Israel → Beth Israel (control) | 250 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.104 |
+| Beth Israel → Beth Israel (control) | 250 | CLOSED-TEST | 100.0 | 70.0 | 51.0 | 16.0 | 0.383 |
+| Beth Israel → Beth Israel (control) | 250 | FINE-TUNE | 100.0 | 88.0 | 58.0 |  | 0.358 |
+| Beth Israel → Beth Israel (control) | 250 | LABEL-FREE | 100.0 | 8.0 | 0.0 |  | 0.396 |
+| Beth Israel → Beth Israel (control) | 250 | RECALIBRATE | 100.0 | 82.0 | 60.0 |  | 0.383 |
+| Beth Israel → Beth Israel (control) | 250 | RETRAIN | 100.0 | 100.0 | 8.0 |  | 0.078 |
 | Beth Israel → Beth Israel (control) | 500 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.396 |
 | Beth Israel → Beth Israel (control) | 500 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.105 |
-| Beth Israel → Beth Israel (control) | 500 | FINE-TUNE | 100.0 | 90.0 | 53.3 |  | 0.374 |
-| Beth Israel → Beth Israel (control) | 500 | LABEL-FREE | 100.0 | 13.3 | 0.0 |  | 0.398 |
-| Beth Israel → Beth Israel (control) | 500 | RECALIBRATE | 100.0 | 73.3 | 53.3 |  | 0.392 |
-| Beth Israel → Beth Israel (control) | 500 | RETRAIN | 100.0 | 100.0 | 6.7 |  | 0.114 |
-| Beth Israel → Beth Israel (control) | 1000 | AS-IS | 100.0 | 13.3 | 13.3 |  | 0.392 |
-| Beth Israel → Beth Israel (control) | 1000 | CAB | 3.3 | 3.3 | 3.3 | 0.0 | 0.11 |
-| Beth Israel → Beth Israel (control) | 1000 | FINE-TUNE | 100.0 | 86.7 | 70.0 |  | 0.376 |
-| Beth Israel → Beth Israel (control) | 1000 | LABEL-FREE | 100.0 | 23.3 | 0.0 |  | 0.394 |
-| Beth Israel → Beth Israel (control) | 1000 | RECALIBRATE | 100.0 | 53.3 | 50.0 |  | 0.391 |
-| Beth Israel → Beth Israel (control) | 1000 | RETRAIN | 100.0 | 100.0 | 13.3 |  | 0.245 |
-| Beth Israel → Beth Israel (control) | 2000 | AS-IS | 100.0 | 13.3 | 13.3 |  | 0.392 |
-| Beth Israel → Beth Israel (control) | 2000 | CAB | 6.7 | 6.7 | 6.7 | 0.0 | 0.119 |
-| Beth Israel → Beth Israel (control) | 2000 | FINE-TUNE | 100.0 | 76.7 | 60.0 |  | 0.386 |
-| Beth Israel → Beth Israel (control) | 2000 | LABEL-FREE | 100.0 | 30.0 | 0.0 |  | 0.393 |
-| Beth Israel → Beth Israel (control) | 2000 | RECALIBRATE | 100.0 | 56.7 | 53.3 |  | 0.393 |
-| Beth Israel → Beth Israel (control) | 2000 | RETRAIN | 100.0 | 100.0 | 3.3 |  | 0.289 |
-| Beth Israel model → Emory | 250 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.277 |
+| Beth Israel → Beth Israel (control) | 500 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.105 |
+| Beth Israel → Beth Israel (control) | 500 | CLOSED-TEST | 100.0 | 70.0 | 54.0 | 7.0 | 0.391 |
+| Beth Israel → Beth Israel (control) | 500 | FINE-TUNE | 100.0 | 87.0 | 54.0 |  | 0.375 |
+| Beth Israel → Beth Israel (control) | 500 | LABEL-FREE | 100.0 | 16.0 | 0.0 |  | 0.397 |
+| Beth Israel → Beth Israel (control) | 500 | RECALIBRATE | 100.0 | 75.0 | 59.0 |  | 0.391 |
+| Beth Israel → Beth Israel (control) | 500 | RETRAIN | 100.0 | 100.0 | 6.0 |  | 0.149 |
+| Beth Israel → Beth Israel (control) | 1000 | AS-IS | 100.0 | 11.0 | 11.0 |  | 0.394 |
+| Beth Israel → Beth Israel (control) | 1000 | CAB | 3.0 | 3.0 | 3.0 | 1.0 | 0.111 |
+| Beth Israel → Beth Israel (control) | 1000 | CERT-RECAL | 2.0 | 2.0 | 2.0 | 1.0 | 0.108 |
+| Beth Israel → Beth Israel (control) | 1000 | CLOSED-TEST | 100.0 | 61.0 | 53.0 | 2.0 | 0.392 |
+| Beth Israel → Beth Israel (control) | 1000 | FINE-TUNE | 100.0 | 76.0 | 65.0 |  | 0.378 |
+| Beth Israel → Beth Israel (control) | 1000 | LABEL-FREE | 100.0 | 31.0 | 0.0 |  | 0.396 |
+| Beth Israel → Beth Israel (control) | 1000 | RECALIBRATE | 100.0 | 62.0 | 54.0 |  | 0.393 |
+| Beth Israel → Beth Israel (control) | 1000 | RETRAIN | 100.0 | 100.0 | 8.0 |  | 0.24 |
+| Beth Israel → Beth Israel (control) | 2000 | AS-IS | 100.0 | 22.0 | 22.0 |  | 0.393 |
+| Beth Israel → Beth Israel (control) | 2000 | CAB | 5.0 | 4.0 | 4.0 | 0.0 | 0.116 |
+| Beth Israel → Beth Israel (control) | 2000 | CERT-RECAL | 1.0 | 1.0 | 1.0 | 0.0 | 0.105 |
+| Beth Israel → Beth Israel (control) | 2000 | CLOSED-TEST | 100.0 | 57.0 | 55.0 | 0.0 | 0.394 |
+| Beth Israel → Beth Israel (control) | 2000 | FINE-TUNE | 100.0 | 63.0 | 49.0 |  | 0.386 |
+| Beth Israel → Beth Israel (control) | 2000 | LABEL-FREE | 100.0 | 35.0 | 0.0 |  | 0.394 |
+| Beth Israel → Beth Israel (control) | 2000 | RECALIBRATE | 100.0 | 56.0 | 54.0 |  | 0.394 |
+| Beth Israel → Beth Israel (control) | 2000 | RETRAIN | 100.0 | 100.0 | 8.0 |  | 0.289 |
+| Beth Israel model → Emory | 250 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.276 |
 | Beth Israel model → Emory | 250 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
-| Beth Israel model → Emory | 250 | FINE-TUNE | 100.0 | 100.0 | 36.7 |  | 0.189 |
-| Beth Israel model → Emory | 250 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
-| Beth Israel model → Emory | 250 | RECALIBRATE | 100.0 | 100.0 | 40.0 |  | 0.201 |
-| Beth Israel model → Emory | 250 | RETRAIN | 100.0 | 100.0 | 23.3 |  | -0.247 |
+| Beth Israel model → Emory | 250 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
+| Beth Israel model → Emory | 250 | CLOSED-TEST | 100.0 | 100.0 | 46.0 | 12.0 | 0.213 |
+| Beth Israel model → Emory | 250 | FINE-TUNE | 100.0 | 100.0 | 46.0 |  | 0.204 |
+| Beth Israel model → Emory | 250 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.239 |
+| Beth Israel model → Emory | 250 | RECALIBRATE | 100.0 | 100.0 | 43.0 |  | 0.201 |
+| Beth Israel model → Emory | 250 | RETRAIN | 100.0 | 100.0 | 15.0 |  | -0.215 |
 | Beth Israel model → Emory | 500 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.277 |
 | Beth Israel model → Emory | 500 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
-| Beth Israel model → Emory | 500 | FINE-TUNE | 100.0 | 100.0 | 46.7 |  | 0.217 |
+| Beth Israel model → Emory | 500 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
+| Beth Israel model → Emory | 500 | CLOSED-TEST | 100.0 | 100.0 | 30.0 | 6.0 | 0.202 |
+| Beth Israel model → Emory | 500 | FINE-TUNE | 100.0 | 100.0 | 37.0 |  | 0.204 |
 | Beth Israel model → Emory | 500 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
-| Beth Israel model → Emory | 500 | RECALIBRATE | 100.0 | 100.0 | 26.7 |  | 0.188 |
-| Beth Israel model → Emory | 500 | RETRAIN | 100.0 | 100.0 | 26.7 |  | 0.023 |
-| Beth Israel model → Emory | 1000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.276 |
-| Beth Israel model → Emory | 1000 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
-| Beth Israel model → Emory | 1000 | FINE-TUNE | 100.0 | 96.7 | 50.0 |  | 0.26 |
-| Beth Israel model → Emory | 1000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.239 |
-| Beth Israel model → Emory | 1000 | RECALIBRATE | 100.0 | 100.0 | 20.0 |  | 0.204 |
-| Beth Israel model → Emory | 1000 | RETRAIN | 100.0 | 100.0 | 16.7 |  | 0.134 |
+| Beth Israel model → Emory | 500 | RECALIBRATE | 100.0 | 100.0 | 28.0 |  | 0.2 |
+| Beth Israel model → Emory | 500 | RETRAIN | 100.0 | 100.0 | 17.0 |  | -0.021 |
+| Beth Israel model → Emory | 1000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.277 |
+| Beth Israel model → Emory | 1000 | CAB | 1.0 | 0.0 | 0.0 | 1.0 | 0.069 |
+| Beth Israel model → Emory | 1000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
+| Beth Israel model → Emory | 1000 | CLOSED-TEST | 100.0 | 100.0 | 17.0 | 4.0 | 0.203 |
+| Beth Israel model → Emory | 1000 | FINE-TUNE | 100.0 | 93.0 | 34.0 |  | 0.252 |
+| Beth Israel model → Emory | 1000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
+| Beth Israel model → Emory | 1000 | RECALIBRATE | 100.0 | 100.0 | 15.0 |  | 0.198 |
+| Beth Israel model → Emory | 1000 | RETRAIN | 100.0 | 100.0 | 19.0 |  | 0.117 |
 | Beth Israel model → Emory | 2000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.276 |
-| Beth Israel model → Emory | 2000 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.067 |
-| Beth Israel model → Emory | 2000 | FINE-TUNE | 100.0 | 76.7 | 53.3 |  | 0.303 |
+| Beth Israel model → Emory | 2000 | CAB | 2.0 | 1.0 | 1.0 | 2.0 | 0.071 |
+| Beth Israel model → Emory | 2000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.066 |
+| Beth Israel model → Emory | 2000 | CLOSED-TEST | 100.0 | 98.0 | 21.0 | 13.0 | 0.224 |
+| Beth Israel model → Emory | 2000 | FINE-TUNE | 100.0 | 79.0 | 52.0 |  | 0.301 |
 | Beth Israel model → Emory | 2000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
-| Beth Israel model → Emory | 2000 | RECALIBRATE | 100.0 | 100.0 | 10.0 |  | 0.208 |
-| Beth Israel model → Emory | 2000 | RETRAIN | 100.0 | 96.7 | 36.7 |  | 0.198 |
+| Beth Israel model → Emory | 2000 | RECALIBRATE | 100.0 | 100.0 | 15.0 |  | 0.212 |
+| Beth Israel model → Emory | 2000 | RETRAIN | 100.0 | 89.0 | 41.0 |  | 0.243 |
 | Beth Israel model → Emory | 4000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.277 |
-| Beth Israel model → Emory | 4000 | CAB | 10.0 | 3.3 | 3.3 | 10.0 | 0.091 |
-| Beth Israel model → Emory | 4000 | FINE-TUNE | 100.0 | 46.7 | 36.7 |  | 0.328 |
-| Beth Israel model → Emory | 4000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.241 |
-| Beth Israel model → Emory | 4000 | RECALIBRATE | 100.0 | 100.0 | 3.3 |  | 0.206 |
-| Beth Israel model → Emory | 4000 | RETRAIN | 100.0 | 50.0 | 43.3 |  | 0.306 |
+| Beth Israel model → Emory | 4000 | CAB | 10.0 | 1.0 | 1.0 | 10.0 | 0.09 |
+| Beth Israel model → Emory | 4000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.064 |
+| Beth Israel model → Emory | 4000 | CLOSED-TEST | 100.0 | 82.0 | 15.0 | 31.0 | 0.247 |
+| Beth Israel model → Emory | 4000 | FINE-TUNE | 100.0 | 48.0 | 40.0 |  | 0.334 |
+| Beth Israel model → Emory | 4000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
+| Beth Israel model → Emory | 4000 | RECALIBRATE | 100.0 | 100.0 | 3.0 |  | 0.206 |
+| Beth Israel model → Emory | 4000 | RETRAIN | 100.0 | 56.0 | 46.0 |  | 0.305 |
 | Beth Israel model → Emory | 8000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.276 |
-| Beth Israel model → Emory | 8000 | CAB | 63.3 | 3.3 | 3.3 | 63.3 | 0.244 |
-| Beth Israel model → Emory | 8000 | FINE-TUNE | 100.0 | 50.0 | 50.0 |  | 0.359 |
+| Beth Israel model → Emory | 8000 | CAB | 70.0 | 3.0 | 3.0 | 70.0 | 0.265 |
+| Beth Israel model → Emory | 8000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.06 |
+| Beth Israel model → Emory | 8000 | CLOSED-TEST | 100.0 | 56.0 | 37.0 | 81.0 | 0.333 |
+| Beth Israel model → Emory | 8000 | FINE-TUNE | 100.0 | 49.0 | 49.0 |  | 0.361 |
 | Beth Israel model → Emory | 8000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.239 |
 | Beth Israel model → Emory | 8000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.208 |
-| Beth Israel model → Emory | 8000 | RETRAIN | 100.0 | 60.0 | 60.0 |  | 0.344 |
-| Beth Israel model → Emory | 12000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.279 |
-| Beth Israel model → Emory | 12000 | CAB | 96.7 | 3.3 | 3.3 | 96.7 | 0.354 |
-| Beth Israel model → Emory | 12000 | FINE-TUNE | 100.0 | 36.7 | 36.7 |  | 0.373 |
-| Beth Israel model → Emory | 12000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.241 |
-| Beth Israel model → Emory | 12000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.212 |
-| Beth Israel model → Emory | 12000 | RETRAIN | 100.0 | 43.3 | 43.3 |  | 0.373 |
+| Beth Israel model → Emory | 8000 | RETRAIN | 100.0 | 45.0 | 45.0 |  | 0.35 |
+| Beth Israel model → Emory | 12000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.278 |
+| Beth Israel model → Emory | 12000 | CAB | 97.0 | 2.0 | 2.0 | 97.0 | 0.357 |
+| Beth Israel model → Emory | 12000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.051 |
+| Beth Israel model → Emory | 12000 | CLOSED-TEST | 100.0 | 45.0 | 38.0 | 93.0 | 0.361 |
+| Beth Israel model → Emory | 12000 | FINE-TUNE | 100.0 | 40.0 | 40.0 |  | 0.372 |
+| Beth Israel model → Emory | 12000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.24 |
+| Beth Israel model → Emory | 12000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.21 |
+| Beth Israel model → Emory | 12000 | RETRAIN | 100.0 | 49.0 | 49.0 |  | 0.373 |
 | Emory model → Beth Israel | 250 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.311 |
 | Emory model → Beth Israel | 250 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
-| Emory model → Beth Israel | 250 | FINE-TUNE | 100.0 | 100.0 | 26.7 |  | 0.285 |
+| Emory model → Beth Israel | 250 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
+| Emory model → Beth Israel | 250 | CLOSED-TEST | 100.0 | 100.0 | 26.0 | 0.0 | 0.306 |
+| Emory model → Beth Israel | 250 | FINE-TUNE | 100.0 | 100.0 | 25.0 |  | 0.294 |
 | Emory model → Beth Israel | 250 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.303 |
-| Emory model → Beth Israel | 250 | RECALIBRATE | 100.0 | 100.0 | 13.3 |  | 0.298 |
-| Emory model → Beth Israel | 250 | RETRAIN | 100.0 | 100.0 | 10.0 |  | 0.128 |
+| Emory model → Beth Israel | 250 | RECALIBRATE | 100.0 | 100.0 | 10.0 |  | 0.307 |
+| Emory model → Beth Israel | 250 | RETRAIN | 100.0 | 100.0 | 6.0 |  | 0.125 |
 | Emory model → Beth Israel | 500 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.311 |
 | Emory model → Beth Israel | 500 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
-| Emory model → Beth Israel | 500 | FINE-TUNE | 100.0 | 100.0 | 13.3 |  | 0.315 |
-| Emory model → Beth Israel | 500 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.303 |
-| Emory model → Beth Israel | 500 | RECALIBRATE | 100.0 | 100.0 | 6.7 |  | 0.313 |
-| Emory model → Beth Israel | 500 | RETRAIN | 100.0 | 100.0 | 3.3 |  | 0.215 |
+| Emory model → Beth Israel | 500 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
+| Emory model → Beth Israel | 500 | CLOSED-TEST | 100.0 | 100.0 | 13.0 | 0.0 | 0.313 |
+| Emory model → Beth Israel | 500 | FINE-TUNE | 100.0 | 100.0 | 21.0 |  | 0.311 |
+| Emory model → Beth Israel | 500 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.304 |
+| Emory model → Beth Israel | 500 | RECALIBRATE | 100.0 | 100.0 | 5.0 |  | 0.314 |
+| Emory model → Beth Israel | 500 | RETRAIN | 100.0 | 100.0 | 1.0 |  | 0.187 |
 | Emory model → Beth Israel | 1000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.311 |
 | Emory model → Beth Israel | 1000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
-| Emory model → Beth Israel | 1000 | FINE-TUNE | 100.0 | 100.0 | 10.0 |  | 0.33 |
+| Emory model → Beth Israel | 1000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
+| Emory model → Beth Israel | 1000 | CLOSED-TEST | 100.0 | 100.0 | 5.0 | 0.0 | 0.317 |
+| Emory model → Beth Israel | 1000 | FINE-TUNE | 100.0 | 100.0 | 9.0 |  | 0.328 |
 | Emory model → Beth Israel | 1000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.304 |
-| Emory model → Beth Israel | 1000 | RECALIBRATE | 100.0 | 100.0 | 3.3 |  | 0.32 |
-| Emory model → Beth Israel | 1000 | RETRAIN | 100.0 | 100.0 | 6.7 |  | 0.271 |
+| Emory model → Beth Israel | 1000 | RECALIBRATE | 100.0 | 100.0 | 5.0 |  | 0.316 |
+| Emory model → Beth Israel | 1000 | RETRAIN | 100.0 | 100.0 | 2.0 |  | 0.277 |
 | Emory model → Beth Israel | 2000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.311 |
-| Emory model → Beth Israel | 2000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.117 |
-| Emory model → Beth Israel | 2000 | FINE-TUNE | 100.0 | 100.0 | 6.7 |  | 0.342 |
+| Emory model → Beth Israel | 2000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
+| Emory model → Beth Israel | 2000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.116 |
+| Emory model → Beth Israel | 2000 | CLOSED-TEST | 100.0 | 100.0 | 1.0 | 0.0 | 0.32 |
+| Emory model → Beth Israel | 2000 | FINE-TUNE | 100.0 | 100.0 | 8.0 |  | 0.343 |
 | Emory model → Beth Israel | 2000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.303 |
 | Emory model → Beth Israel | 2000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.318 |
-| Emory model → Beth Israel | 2000 | RETRAIN | 100.0 | 100.0 | 3.3 |  | 0.328 |
-| Emory model → Beth Israel | 4000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.307 |
-| Emory model → Beth Israel | 4000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.114 |
-| Emory model → Beth Israel | 4000 | FINE-TUNE | 100.0 | 100.0 | 6.7 |  | 0.358 |
-| Emory model → Beth Israel | 4000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.301 |
-| Emory model → Beth Israel | 4000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.315 |
-| Emory model → Beth Israel | 4000 | RETRAIN | 100.0 | 100.0 | 0.0 |  | 0.36 |
-| Emory model → Beth Israel | 8000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.308 |
-| Emory model → Beth Israel | 8000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.113 |
-| Emory model → Beth Israel | 8000 | FINE-TUNE | 100.0 | 100.0 | 10.0 |  | 0.379 |
+| Emory model → Beth Israel | 2000 | RETRAIN | 100.0 | 100.0 | 2.0 |  | 0.321 |
+| Emory model → Beth Israel | 4000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.31 |
+| Emory model → Beth Israel | 4000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.115 |
+| Emory model → Beth Israel | 4000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.115 |
+| Emory model → Beth Israel | 4000 | CLOSED-TEST | 100.0 | 100.0 | 3.0 | 0.0 | 0.325 |
+| Emory model → Beth Israel | 4000 | FINE-TUNE | 100.0 | 100.0 | 9.0 |  | 0.36 |
+| Emory model → Beth Israel | 4000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.302 |
+| Emory model → Beth Israel | 4000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.318 |
+| Emory model → Beth Israel | 4000 | RETRAIN | 100.0 | 100.0 | 5.0 |  | 0.359 |
+| Emory model → Beth Israel | 8000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.309 |
+| Emory model → Beth Israel | 8000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.115 |
+| Emory model → Beth Israel | 8000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.115 |
+| Emory model → Beth Israel | 8000 | CLOSED-TEST | 100.0 | 100.0 | 7.0 | 0.0 | 0.346 |
+| Emory model → Beth Israel | 8000 | FINE-TUNE | 100.0 | 100.0 | 14.0 |  | 0.379 |
 | Emory model → Beth Israel | 8000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.302 |
-| Emory model → Beth Israel | 8000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.318 |
-| Emory model → Beth Israel | 8000 | RETRAIN | 100.0 | 100.0 | 6.7 |  | 0.39 |
-| Emory model → Beth Israel | 12000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.309 |
-| Emory model → Beth Israel | 12000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.118 |
-| Emory model → Beth Israel | 12000 | FINE-TUNE | 100.0 | 96.7 | 30.0 |  | 0.386 |
-| Emory model → Beth Israel | 12000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.303 |
-| Emory model → Beth Israel | 12000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.319 |
-| Emory model → Beth Israel | 12000 | RETRAIN | 100.0 | 100.0 | 36.7 |  | 0.396 |
-| Emory → Emory (control) | 250 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.388 |
-| Emory → Emory (control) | 250 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.016 |
-| Emory → Emory (control) | 250 | FINE-TUNE | 100.0 | 93.3 | 76.7 |  | 0.307 |
-| Emory → Emory (control) | 250 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.389 |
-| Emory → Emory (control) | 250 | RECALIBRATE | 100.0 | 63.3 | 60.0 |  | 0.344 |
-| Emory → Emory (control) | 250 | RETRAIN | 100.0 | 100.0 | 10.0 |  | -0.165 |
-| Emory → Emory (control) | 500 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.389 |
-| Emory → Emory (control) | 500 | CAB | 3.3 | 0.0 | 0.0 | 0.0 | 0.03 |
-| Emory → Emory (control) | 500 | FINE-TUNE | 100.0 | 76.7 | 53.3 |  | 0.334 |
-| Emory → Emory (control) | 500 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.389 |
-| Emory → Emory (control) | 500 | RECALIBRATE | 100.0 | 56.7 | 53.3 |  | 0.369 |
-| Emory → Emory (control) | 500 | RETRAIN | 100.0 | 100.0 | 13.3 |  | 0.042 |
-| Emory → Emory (control) | 1000 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.388 |
-| Emory → Emory (control) | 1000 | CAB | 3.3 | 0.0 | 0.0 | 3.3 | 0.027 |
-| Emory → Emory (control) | 1000 | FINE-TUNE | 100.0 | 70.0 | 50.0 |  | 0.36 |
-| Emory → Emory (control) | 1000 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.389 |
-| Emory → Emory (control) | 1000 | RECALIBRATE | 100.0 | 60.0 | 60.0 |  | 0.369 |
-| Emory → Emory (control) | 1000 | RETRAIN | 100.0 | 100.0 | 16.7 |  | 0.144 |
-| Emory → Emory (control) | 2000 | AS-IS | 100.0 | 3.3 | 3.3 |  | 0.376 |
-| Emory → Emory (control) | 2000 | CAB | 23.3 | 3.3 | 3.3 | 10.0 | 0.094 |
-| Emory → Emory (control) | 2000 | FINE-TUNE | 100.0 | 50.0 | 50.0 |  | 0.368 |
-| Emory → Emory (control) | 2000 | LABEL-FREE | 100.0 | 3.3 | 0.0 |  | 0.377 |
-| Emory → Emory (control) | 2000 | RECALIBRATE | 100.0 | 50.0 | 50.0 |  | 0.364 |
-| Emory → Emory (control) | 2000 | RETRAIN | 100.0 | 96.7 | 36.7 |  | 0.264 |
+| Emory model → Beth Israel | 8000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.317 |
+| Emory model → Beth Israel | 8000 | RETRAIN | 100.0 | 100.0 | 15.0 |  | 0.391 |
+| Emory model → Beth Israel | 12000 | AS-IS | 100.0 | 100.0 | 100.0 |  | 0.305 |
+| Emory model → Beth Israel | 12000 | CAB | 0.0 | 0.0 | 0.0 | 100.0 | 0.112 |
+| Emory model → Beth Israel | 12000 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 100.0 | 0.112 |
+| Emory model → Beth Israel | 12000 | CLOSED-TEST | 100.0 | 99.0 | 24.0 | 0.0 | 0.374 |
+| Emory model → Beth Israel | 12000 | FINE-TUNE | 100.0 | 99.0 | 29.0 |  | 0.382 |
+| Emory model → Beth Israel | 12000 | LABEL-FREE | 100.0 | 100.0 | 0.0 |  | 0.301 |
+| Emory model → Beth Israel | 12000 | RECALIBRATE | 100.0 | 100.0 | 0.0 |  | 0.316 |
+| Emory model → Beth Israel | 12000 | RETRAIN | 100.0 | 100.0 | 35.0 |  | 0.395 |
+| Emory → Emory (control) | 250 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.389 |
+| Emory → Emory (control) | 250 | CAB | 0.0 | 0.0 | 0.0 | 0.0 | 0.018 |
+| Emory → Emory (control) | 250 | CERT-RECAL | 0.0 | 0.0 | 0.0 | 0.0 | 0.018 |
+| Emory → Emory (control) | 250 | CLOSED-TEST | 100.0 | 45.0 | 36.0 | 25.0 | 0.361 |
+| Emory → Emory (control) | 250 | FINE-TUNE | 100.0 | 86.0 | 64.0 |  | 0.319 |
+| Emory → Emory (control) | 250 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.39 |
+| Emory → Emory (control) | 250 | RECALIBRATE | 100.0 | 60.0 | 53.0 |  | 0.356 |
+| Emory → Emory (control) | 250 | RETRAIN | 100.0 | 100.0 | 6.0 |  | -0.22 |
+| Emory → Emory (control) | 500 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.39 |
+| Emory → Emory (control) | 500 | CAB | 2.0 | 0.0 | 0.0 | 0.0 | 0.027 |
+| Emory → Emory (control) | 500 | CERT-RECAL | 2.0 | 0.0 | 0.0 | 0.0 | 0.027 |
+| Emory → Emory (control) | 500 | CLOSED-TEST | 100.0 | 46.0 | 43.0 | 25.0 | 0.374 |
+| Emory → Emory (control) | 500 | FINE-TUNE | 100.0 | 71.0 | 50.0 |  | 0.35 |
+| Emory → Emory (control) | 500 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.391 |
+| Emory → Emory (control) | 500 | RECALIBRATE | 100.0 | 57.0 | 53.0 |  | 0.37 |
+| Emory → Emory (control) | 500 | RETRAIN | 100.0 | 100.0 | 7.0 |  | 0.012 |
+| Emory → Emory (control) | 1000 | AS-IS | 100.0 | 0.0 | 0.0 |  | 0.391 |
+| Emory → Emory (control) | 1000 | CAB | 5.0 | 2.0 | 2.0 | 1.0 | 0.038 |
+| Emory → Emory (control) | 1000 | CERT-RECAL | 5.0 | 2.0 | 2.0 | 1.0 | 0.038 |
+| Emory → Emory (control) | 1000 | CLOSED-TEST | 100.0 | 39.0 | 38.0 | 30.0 | 0.378 |
+| Emory → Emory (control) | 1000 | FINE-TUNE | 100.0 | 60.0 | 50.0 |  | 0.361 |
+| Emory → Emory (control) | 1000 | LABEL-FREE | 100.0 | 0.0 | 0.0 |  | 0.391 |
+| Emory → Emory (control) | 1000 | RECALIBRATE | 100.0 | 57.0 | 56.0 |  | 0.374 |
+| Emory → Emory (control) | 1000 | RETRAIN | 100.0 | 99.0 | 14.0 |  | 0.166 |
+| Emory → Emory (control) | 2000 | AS-IS | 100.0 | 1.0 | 1.0 |  | 0.384 |
+| Emory → Emory (control) | 2000 | CAB | 25.0 | 2.0 | 2.0 | 9.0 | 0.103 |
+| Emory → Emory (control) | 2000 | CERT-RECAL | 23.0 | 1.0 | 1.0 | 9.0 | 0.095 |
+| Emory → Emory (control) | 2000 | CLOSED-TEST | 100.0 | 40.0 | 39.0 | 31.0 | 0.377 |
+| Emory → Emory (control) | 2000 | FINE-TUNE | 100.0 | 56.0 | 53.0 |  | 0.372 |
+| Emory → Emory (control) | 2000 | LABEL-FREE | 100.0 | 1.0 | 0.0 |  | 0.385 |
+| Emory → Emory (control) | 2000 | RECALIBRATE | 100.0 | 50.0 | 50.0 |  | 0.372 |
+| Emory → Emory (control) | 2000 | RETRAIN | 100.0 | 98.0 | 31.0 |  | 0.25 |
 
 ## Table S1. Correct remedy (from full target data) for every safety criterion
 
@@ -189,14 +233,14 @@
 | Beth Israel model → Emory | 0.85 | 0.0 | 0.484 | ADAPT |
 | Beth Israel model → Emory | 0.85 | 0.05 | 0.534 | ADAPT |
 | Beth Israel model → Emory | 0.85 | 0.1 | 0.584 | ADAPT |
-| Emory model → Beth Israel | 0.75 | 0.0 | 0.298 | BLOCK |
-| Emory model → Beth Israel | 0.75 | 0.05 | 0.348 | ADAPT |
-| Emory model → Beth Israel | 0.75 | 0.1 | 0.398 | ADAPT |
+| Emory model → Beth Israel | 0.75 | 0.0 | 0.285 | BLOCK |
+| Emory model → Beth Israel | 0.75 | 0.05 | 0.335 | BLOCK |
+| Emory model → Beth Israel | 0.75 | 0.1 | 0.385 | ADAPT |
 | Emory model → Beth Israel | 0.8 | 0.0 | 0.329 | BLOCK |
 | Emory model → Beth Israel | 0.8 | 0.05 | 0.379 | BLOCK |
 | Emory model → Beth Israel | 0.8 | 0.1 | 0.429 | ADAPT |
 | Emory model → Beth Israel | 0.85 | 0.0 | 0.399 | BLOCK |
-| Emory model → Beth Israel | 0.85 | 0.05 | 0.449 | ADAPT |
+| Emory model → Beth Israel | 0.85 | 0.05 | 0.449 | BLOCK |
 | Emory model → Beth Israel | 0.85 | 0.1 | 0.499 | ADAPT |
 | Beth Israel → Beth Israel (control) | 0.75 | 0.0 | 0.31 | ADAPT|BLOCK |
 | Beth Israel → Beth Israel (control) | 0.75 | 0.05 | 0.36 | KEEP |
@@ -207,9 +251,9 @@
 | Beth Israel → Beth Israel (control) | 0.85 | 0.0 | 0.484 | KEEP |
 | Beth Israel → Beth Israel (control) | 0.85 | 0.05 | 0.534 | KEEP |
 | Beth Israel → Beth Israel (control) | 0.85 | 0.1 | 0.584 | KEEP |
-| Emory → Emory (control) | 0.75 | 0.0 | 0.298 | CALIBRATE |
-| Emory → Emory (control) | 0.75 | 0.05 | 0.348 | KEEP |
-| Emory → Emory (control) | 0.75 | 0.1 | 0.398 | KEEP |
+| Emory → Emory (control) | 0.75 | 0.0 | 0.285 | CALIBRATE |
+| Emory → Emory (control) | 0.75 | 0.05 | 0.335 | KEEP |
+| Emory → Emory (control) | 0.75 | 0.1 | 0.385 | KEEP |
 | Emory → Emory (control) | 0.8 | 0.0 | 0.329 | CALIBRATE |
 | Emory → Emory (control) | 0.8 | 0.05 | 0.379 | KEEP |
 | Emory → Emory (control) | 0.8 | 0.1 | 0.429 | KEEP |

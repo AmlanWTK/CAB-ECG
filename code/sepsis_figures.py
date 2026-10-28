@@ -1,10 +1,14 @@
-"""Chapter figures and tables for the sepsis CAB study (reads the CSVs written by E1, E2, E3v2).
+"""Chapter figures and tables for the sepsis CAB study (reads the CSVs written by E1-E12).
 
   fig1_transfer        imported vs local model at each hospital, with 95% bootstrap CIs (E2)
-  fig2_cab_decisions   what CAB switched on, by label budget, in each setting (E3v2, primary criterion)
+  fig2_cab_decisions   what CAB switched on, by label budget, in each setting (E3mac100, primary criterion)
   fig3_unsafe          share of runs that switched on an unsafe configuration, by policy and budget
   fig4_overall         unsafe and silent-failure rates per policy over ALL settings, criteria, budgets
-  chapter_tables.md    cohort, E1/E2 performance, E2 CIs, E3v2 primary results
+  fig5_baselines       CAB against practical alternatives: unsafe and correct decisions (E10)
+  fig6_labels          septic patients needed to certify, by the model's margin over the target (E5)
+  fig7_validity        measured unsafe rate of every setting against the nominal alpha (E12)
+  fig8_tolerance       approval at home by the hospital's false-alert tolerance (E11)
+  chapter_tables.md    cohort, E1/E2 performance, E2 CIs, E3mac100 primary results
 
 Each figure is written as PDF (vector, for the publisher) and PNG (300 dpi, for drafts).
 Sized for Springer full text width (174 mm); grayscale-safe via markers, ramps and hatching.
@@ -29,17 +33,25 @@ FIG = SEP / "figures"
 MM = 1 / 25.4
 FULL_W = 174 * MM
 PRIMARY = (0.80, 0.05)
+SOURCE = "E3mac100"   # the final 100-repeat run, all on one machine
 
 INK, INK2, MUTED, GRID, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e1", "#ffffff"
-POLICY_ORDER = ["CAB", "AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "RETRAIN"]
+POLICY_ORDER = ["CAB", "AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "RETRAIN", "CLOSED-TEST"]
 POLICY_COLOR = {"CAB": "#2a78d6", "AS-IS": "#eb6834", "LABEL-FREE": "#1baf7a",
-                "RECALIBRATE": "#eda100", "FINE-TUNE": "#e87ba4", "RETRAIN": "#008300"}
+                "RECALIBRATE": "#eda100", "FINE-TUNE": "#e87ba4", "RETRAIN": "#008300",
+                "CLOSED-TEST": "#7a5cc7"}
 POLICY_MARK = {"CAB": "o", "AS-IS": "s", "LABEL-FREE": "^", "RECALIBRATE": "D",
-               "FINE-TUNE": "v", "RETRAIN": "P"}
+               "FINE-TUNE": "v", "RETRAIN": "P", "CLOSED-TEST": "X"}
 POLICY_LABEL = {"CAB": "CAB (certified)", "AS-IS": "As-is", "LABEL-FREE": "Label-free reset",
-                "RECALIBRATE": "Recalibrate", "FINE-TUNE": "Fine-tune", "RETRAIN": "Retrain locally"}
+                "RECALIBRATE": "Recalibrate", "FINE-TUNE": "Fine-tune", "RETRAIN": "Retrain locally",
+                "CLOSED-TEST": "Classical updating (closed test)"}
 POLICY_SHORT = {"CAB": "CAB", "AS-IS": "As-is", "LABEL-FREE": "Label-free", "RECALIBRATE": "Recalibrate",
-                "FINE-TUNE": "Fine-tune", "RETRAIN": "Retrain"}
+                "FINE-TUNE": "Fine-tune", "RETRAIN": "Retrain", "CLOSED-TEST": "Closed test"}
+BASELINE_ORDER = ["CAB", "LTT-DIRECT", "NAIVE-500", "NAIVE-VAL", "LABEL-SHIFT"]
+BASELINE_LABEL = {"CAB": "CAB (certified)", "LTT-DIRECT": "Learn-then-Test, no order",
+                  "NAIVE-500": "Local validation, 500 patients", "NAIVE-VAL": "Point-estimate validation",
+                  "LABEL-SHIFT": "Prevalence correction"}
+GROUP_COLOR = {"cross-hospital": "#2a78d6", "home": "#eb6834", "ICU unit": "#1baf7a"}
 REMEDY_ORDER = ["KEEP", "CALIBRATE", "ADAPT", "BLOCK"]
 REMEDY_COLOR = {"KEEP": "#86b6ef", "CALIBRATE": "#2a78d6", "ADAPT": "#104281", "BLOCK": "#dddcd7"}
 REMEDY_LABEL = {"KEEP": "Keep", "CALIBRATE": "Calibrate", "ADAPT": "Adapt", "BLOCK": "Block"}
@@ -207,7 +219,7 @@ def fig3_unsafe(summ):
     handles = [Line2D([], [], color=POLICY_COLOR[p], marker=POLICY_MARK[p], ms=4.5,
                       lw=2.2 if p == "CAB" else 1.2, label=POLICY_LABEL[p]) for p in POLICY_ORDER]
     handles.append(Line2D([], [], color=INK2, lw=0.8, ls=(0, (4, 3)), label="5% bound guaranteed for CAB"))
-    fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.08))
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.12))
     fig.subplots_adjust(hspace=0.55, wspace=0.12)
     save(fig, "fig3_unsafe")
 
@@ -215,7 +227,7 @@ def fig3_unsafe(summ):
 def fig4_overall(summ):
     g = summ.groupby("policy").agg(unsafe=("unsafe_rate", "mean"),
                                    silent=("silent_failure_rate", "mean")).reindex(POLICY_ORDER)
-    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 50 * MM), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 56 * MM), sharey=True)
     y = np.arange(len(POLICY_ORDER))[::-1]
     for ax, col, title in [(axes[0], "unsafe", "Switched on an unsafe configuration"),
                            (axes[1], "silent", "Silent failure: looked safe on its own data")]:
@@ -234,6 +246,120 @@ def fig4_overall(summ):
     axes[0].set_yticks(y, [POLICY_LABEL[p] for p in POLICY_ORDER])
     fig.subplots_adjust(wspace=0.08)
     save(fig, "fig4_overall")
+
+
+def fig5_baselines(summ):
+    s = summ[summ.policy.isin(BASELINE_ORDER)].copy()
+    s["group"] = np.where(s.direction.str[0] == s.direction.str[3], "home", "cross-hospital")
+    g = s.groupby(["policy", "group"]).agg(unsafe=("unsafe_rate", "mean"), correct=("correct_rate", "mean"))
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 58 * MM), sharey=True)
+    y = np.arange(len(BASELINE_ORDER))[::-1]
+    h = 0.36
+    for ax, col, title in [(axes[0], "unsafe", "Switched on an unsafe configuration"),
+                           (axes[1], "correct", "Chose the correct remedy")]:
+        for k, (grp, off) in enumerate([("cross-hospital", h / 2), ("home", -h / 2)]):
+            for yi, pol in zip(y, BASELINE_ORDER):
+                v = g[col].get((pol, grp), np.nan)
+                if np.isnan(v):
+                    if k == 0:
+                        ax.text(1, yi, "n/a (no remedy chosen)", va="center", fontsize=6.8, color=MUTED)
+                    continue
+                v *= 100
+                ax.barh(yi + off, v, height=h, color=GROUP_COLOR[grp], edgecolor=SURFACE, linewidth=0.8,
+                        hatch="////" if grp == "home" else None)
+                ax.text(v + 1.5, yi + off, f"{v:.1f}%", va="center", fontsize=6.5, color=INK)
+        ax.set_xlim(0, 112)
+        ax.set_xticks([0, 25, 50, 75, 100])
+        ax.grid(axis="y", visible=False)
+        ax.set_title(title, pad=6)
+        ax.set_xlabel("Mean share of runs, all criteria and budgets (%)")
+    axes[0].set_yticks(y, [BASELINE_LABEL[p] for p in BASELINE_ORDER])
+    plt.rcParams["hatch.color"] = SURFACE
+    handles = [Patch(facecolor=GROUP_COLOR["cross-hospital"], label="Imported from the other hospital"),
+               Patch(facecolor=GROUP_COLOR["home"], hatch="////", edgecolor=SURFACE,
+                     label="Same hospital (control)")]
+    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.2))
+    fig.subplots_adjust(wspace=0.08)
+    save(fig, "fig5_baselines")
+
+
+def fig6_labels(an):
+    a = an[an.table == "septic"]
+    fig, ax = plt.subplots(figsize=(FULL_W * 0.55, 62 * MM))
+    colors = {0.75: "#86b6ef", 0.80: "#2a78d6", 0.85: "#104281"}
+    marks = {0.75: "^", 0.80: "o", 0.85: "s"}
+    for s, q in a.groupby("target"):
+        q = q.sort_values("gap")
+        ax.plot(100 * q.gap, q.needed, marker=marks[s], color=colors[s], ms=4.5, lw=1.4, mec=SURFACE,
+                mew=0.6, label=f"target sensitivity {s:.2f}")
+    ax.set_yscale("log")
+    ticks = [100, 200, 500, 1000, 2000, 5000]
+    ax.set_yticks(ticks, [f"{v:,}" for v in ticks])
+    ax.minorticks_off()
+    ax.set_xlabel("True sensitivity above the target (percentage points)")
+    ax.set_ylabel("Labelled septic patients needed")
+    ax.set_xticks(sorted(100 * a.gap.unique()))
+    ax.legend(frameon=False, loc="upper right")
+    ax.set_title("Labels needed to certify sensitivity", pad=6)
+    save(fig, "fig6_labels")
+
+
+def fig7_validity(val):
+    v = val[(val.policy == "CAB") & val.tag.isin(["E3mac100", "E6units", "E12alpha01", "E12alpha10"])]
+    alphas = sorted(v.alpha.unique())
+    groups = ["cross-hospital", "home", "ICU unit"]
+    fig, ax = plt.subplots(figsize=(FULL_W, 62 * MM))
+    rng = np.random.default_rng(0)
+    w = 0.26
+    for i, a in enumerate(alphas):
+        for j, grp in enumerate(groups):
+            q = v[np.isclose(v.alpha, a) & (v.group == grp)]
+            if q.empty:
+                continue
+            x0 = i + (j - 1) * w
+            ax.scatter(x0 + rng.uniform(-w / 3, w / 3, len(q)), 100 * q.rate, s=7, color=GROUP_COLOR[grp],
+                       alpha=0.55, linewidths=0, zorder=3)
+            ax.plot([x0 - w / 2.4, x0 + w / 2.4], [100 * q.rate.mean()] * 2, color=INK, lw=1.6, zorder=4)
+        ax.plot([i - 0.45, i + 0.45], [100 * a] * 2, color=INK2, lw=0.9, ls=(0, (4, 3)), zorder=2)
+    ax.set_xticks(range(len(alphas)), [f"α = {a:g}" for a in alphas])
+    ax.set_xlim(-0.55, len(alphas) - 0.45)
+    ax.set_ylabel("Runs that switched on an\nunsafe configuration (%)")
+    ax.grid(axis="x", visible=False)
+    ax.set_title("Measured unsafe rate of every setting (100 runs each) against the nominal level", pad=6)
+    handles = [Line2D([], [], marker="o", ls="", color=GROUP_COLOR[g], ms=4, label=
+                      {"cross-hospital": "Other hospital", "home": "Same hospital", "ICU unit": "One ICU type"}[g])
+               for g in groups]
+    handles += [Line2D([], [], color=INK, lw=1.6, label="Mean"),
+                Line2D([], [], color=INK2, lw=0.9, ls=(0, (4, 3)), label="Nominal α")]
+    fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, -0.1))
+    save(fig, "fig7_validity")
+
+
+def fig8_tolerance(sim):
+    q = sim[np.isclose(sim.s_star, PRIMARY[0]) & np.isclose(sim.headroom, 0)].copy()
+    q["approved"] = q.P_KEEP + q.P_CALIBRATE
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 58 * MM), sharey=True)
+    colors = {0.0: "#86b6ef", 0.05: "#2a78d6", 0.10: "#104281"}
+    marks = {0.0: "^", 0.05: "o", 0.10: "s"}
+    for ax, d in zip(axes, ["A->A", "B->B"]):
+        r = q[q.direction == d]
+        budgets = sorted(r.n_labelled.unique())
+        x = np.arange(len(budgets))
+        for m in sorted(r.margin.unique()):
+            s = r[np.isclose(r.margin, m)].set_index("n_labelled").reindex(budgets)
+            ax.plot(x, 100 * s.approved, marker=marks[round(m, 2)], color=colors[round(m, 2)], ms=4.5, lw=1.4,
+                    mec=SURFACE, mew=0.6, label=f"+{100 * m:.0f} points")
+        ax.set_xticks(x, [fmt_n(int(n)) for n in budgets])
+        ax.set_ylim(-3, 103)
+        ax.set_yticks([0, 25, 50, 75, 100])
+        ax.set_title(direction_title(d), pad=6)
+        ax.set_xlabel("Labelled patients")
+    axes[0].set_ylabel("Runs in which CAB approved\nthe model (%)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.3),
+               title="False alerts tolerated above the home rate:", title_fontsize=7.5)
+    fig.subplots_adjust(wspace=0.08)
+    save(fig, "fig8_tolerance")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -298,16 +424,20 @@ def tables(e1, ci, summ, oracle):
 def main():
     style()
     ci = pd.read_csv(SEP / "E2_ci.csv")
-    summ = pd.read_csv(SEP / "E3v2_summary.csv")
-    runs = pd.read_csv(SEP / "E3v2_runs.csv", usecols=["direction", "n_labelled", "s_star", "margin",
-                                                       "policy", "remedy"])
-    oracle = pd.read_csv(SEP / "E3v2_oracle.csv")
+    summ = pd.read_csv(SEP / f"{SOURCE}_summary.csv")
+    runs = pd.read_csv(SEP / f"{SOURCE}_runs.csv", usecols=["direction", "n_labelled", "s_star", "margin",
+                                                             "policy", "remedy"])
+    oracle = pd.read_csv(SEP / f"{SOURCE}_oracle.csv")
     e1 = pd.read_csv(SEP / "E1_E2_results.csv") if (SEP / "E1_E2_results.csv").exists() else None
     print("Making figures ...")
     fig1_transfer(ci)
     fig2_cab_decisions(runs, oracle)
     fig3_unsafe(summ)
     fig4_overall(summ)
+    fig5_baselines(pd.read_csv(SEP / "E10baselines_summary.csv"))
+    fig6_labels(pd.read_csv(SEP / "E5_analytic.csv"))
+    fig7_validity(pd.read_csv(SEP / "E12_validity.csv"))
+    fig8_tolerance(pd.read_csv(SEP / "E11_headroom_sim.csv"))
     tables(e1, ci, summ, oracle)
     print(f"Done: {FIG}")
 
