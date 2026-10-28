@@ -160,7 +160,7 @@ A deployment (model, threshold) is **safe** if S ≥ s* and F ≤ f*. We studied
 
 ### 3.4 The CAB procedure
 
-The hospital labels n patients drawn at random from its own population. Before any model is fitted, CAB divides these patients, within the septic and non-septic groups separately, into a fit half and a certification half. Let δ = α/4.
+Fig. 1 summarises the procedure and Algorithm 1 states it exactly. The hospital labels n patients drawn at random from its own population. Before any model is fitted, CAB divides these patients, within the septic and non-septic groups separately, into a fit half and a certification half. Let δ = α/4.
 
 Two building blocks are used:
 
@@ -185,7 +185,62 @@ The gate then runs in two stages.
 2. Certify a threshold τ_A for the adapted model and test its false-alert rate on the certification half. If both pass, **ADAPT**.
 3. Otherwise **BLOCK**: the model is not switched on, and the hospital continues its usual care.
 
+**Algorithm 1.** CAB (Calibrate, Adapt, or Block).
+
+```
+Input:  imported model g0 with vendor threshold τ_home; targets s*, f*; error level α;
+        n labelled patients L, drawn at random from the target hospital
+Output: KEEP (g0, τ_home), CALIBRATE (g0, τ), ADAPT (gA, τA) or BLOCK
+
+ 1  δ ← α/4
+ 2  split L, within septic and non-septic patients, into L_fit and L_cert (halves)
+ 3  τ ← CERTIFY(g0, L)                         // Stage 1: imported model, all labels
+ 4  if τ exists and FALSE_ALERT_OK(g0, L, τ):
+ 5      if τ_home ≤ τ and FALSE_ALERT_OK(g0, L, τ_home):  return KEEP (g0, τ_home)
+ 6      return CALIBRATE (g0, τ)
+ 7  gA ← ADAPT(g0, L_fit)                       // Stage 2: fitted on L_fit only
+ 8  τA ← CERTIFY(gA, L_cert)
+ 9  if τA exists and FALSE_ALERT_OK(gA, L_cert, τA):  return ADAPT (gA, τA)
+10  return BLOCK                                // usual care continues
+
+CERTIFY(g, S):  w(1) ≥ ... ≥ w(k) ← window-maximum scores of the k septic patients in S
+                d_min ← smallest d with P(Binomial(k, s*) ≥ d) ≤ δ
+                return w(d_min)   (none if d_min > k)
+FALSE_ALERT_OK(g, S, t):  x ← non-septic patients in S (of m) with a stay-maximum score ≥ t
+                return P(Binomial(m, f*) ≤ x) ≤ δ
+```
+
 The order matters. A hospital prefers to keep a vendor model unchanged, because the vendor supports it and it is easier to govern. A threshold change is the next least intrusive option. A retrained model needs local validation and maintenance. CAB therefore always tries the cheapest acceptable option first.
+
+**Illustration.** Table 2 shows CAB's evidence in three real runs at the primary criterion (s* = 0.80, f* = home rate + 0.05), each drawn from the 100 repeats of Section 4.
+
+**A→B with 12,000 labels (672 septic patients).**
+- **Keep.** The imported model at the vendor's threshold detected 443 of the 672 labelled septic patients (65.9%). The exact lower bound of 61.7% is far below the target, so KEEP fails.
+- **Calibrate.** The lowest threshold that proved 80% sensitivity alerted 62.4% of non-septic patients, against a limit of 45.1%, so CALIBRATE fails too.
+- **Adapt.** The adapted model, tested on the 336 septic and 5,664 non-septic patients of the certification half, detected 286 septic patients (lower bound 80.2%). Its false-alert rate was 41.7% (upper bound 43.1%). Both tests passed, and CAB switched on ADAPT.
+- **Check.** On the 8,000 target patients that were never labelled, the deployed model detected 86.6% of septic patients and alerted 43.5% of non-septic patients, so it was safe.
+
+**A→B with only 1,000 labels (47 septic patients).**
+- With so few septic patients, proving 80% sensitivity forced the threshold so low that almost every non-septic patient was alerted (96.7% for calibration, 97.7% for the adapted model).
+- CAB therefore blocked. This is the right action for the evidence available, even though ADAPT would have been correct with enough labels.
+
+**B→A with 1,000 labels.**
+- Every option alerted 70–76% of non-septic patients, against a limit of 37.9%.
+- CAB blocked, which was also the correct remedy given the full data.
+
+**Table 2.** CAB's evidence in three real runs (primary criterion). Counts are detected/labelled septic patients and alerted/labelled non-septic patients. Bounds are one-sided exact bounds at α/4 = 0.0125.
+
+| Run | Step | Data | Septic detected | Sensitivity (lower bound) | Non-septic alerted | False-alert rate (upper bound) | Limit f* | Passed |
+|---|---|---|---|---|---|---|---|---|
+| A→B, n = 12,000 | Keep | all labels | 443/672 | 0.659 (0.617) | 3,560/11,328 | 0.314 (0.324) | 0.451 | no |
+| | Calibrate | all labels | 561/672 | 0.835 (0.800) | 7,070/11,328 | 0.624 (0.634) | 0.451 | no |
+| | Adapt | certification half | 286/336 | 0.851 (0.802) | 2,360/5,664 | 0.417 (0.431) | 0.451 | **yes** |
+| A→B, n = 1,000 | Keep | all labels | 31/47 | 0.660 (0.486) | 320/953 | 0.336 (0.371) | 0.451 | no |
+| | Calibrate | all labels | 44/47 | 0.936 (0.807) | 922/953 | 0.967 (0.979) | 0.451 | no |
+| | Adapt | certification half | 23/23 | 1.000 (0.827) | 465/476 | 0.977 (0.990) | 0.451 | no → BLOCK |
+| B→A, n = 1,000 | Keep | all labels | 83/93 | 0.892 (0.799) | 635/907 | 0.700 (0.734) | 0.379 | no |
+| | Calibrate | all labels | 84/93 | 0.903 (0.812) | 686/907 | 0.756 (0.788) | 0.379 | no |
+| | Adapt | certification half | 43/46 | 0.935 (0.803) | 337/453 | 0.744 (0.789) | 0.379 | no → BLOCK |
 
 ### 3.5 Statistical guarantee
 
@@ -219,7 +274,7 @@ Three things are *not* guaranteed:
 
 ### 3.6 Comparators
 
-**Table 2.** The eleven comparators.
+**Table 3.** The eleven comparators.
 
 | Group | Policy | What it does |
 |---|---|---|
@@ -287,7 +342,7 @@ The analysis is written in Python with LightGBM, NumPy, pandas, SciPy and scikit
 
 ### 4.1 Imported models failed, differently in each direction
 
-Imported unchanged with the vendor's 80%-sensitivity threshold, both models broke the hospital's requirements, but in opposite ways (Fig. 1; Table 3).
+Imported unchanged with the vendor's 80%-sensitivity threshold, both models broke the hospital's requirements, but in opposite ways (Fig. 2; Table 4).
 
 **Hospital A's model at hospital B (A→B)** was the less sensitive.
 - Hourly AUROC fell from the local model's 0.855 to 0.777 (difference −0.078, 95% CI −0.102 to −0.057).
@@ -297,7 +352,7 @@ Imported unchanged with the vendor's 80%-sensitivity threshold, both models brok
 - 67% of non-septic patients were alerted, against 34% for the local model (difference +0.33, 95% CI 0.31 to 0.35).
 - Alarms per patient-day nearly doubled, from 0.51 to 0.92.
 
-**Table 3.** Imported vs local model at each target hospital, with paired 95% patient-bootstrap confidence intervals (`E2_ci.csv`).
+**Table 4.** Imported vs local model at each target hospital, with paired 95% patient-bootstrap confidence intervals (`E2_ci.csv`).
 
 | At | Imported from | Measure | Local | Imported | Difference |
 |---|---|---|---|---|---|
@@ -308,7 +363,7 @@ Imported unchanged with the vendor's 80%-sensitivity threshold, both models brok
 | Beth Israel (A) | Emory (B) | Sensitivity (patients) | 0.771 | 0.858 | +0.087 [0.039, 0.134] |
 | Beth Israel (A) | Emory (B) | Non-septic patients alerted | 0.339 | 0.669 | +0.330 [0.312, 0.348] |
 
-These results determined the correct remedy in each direction (Fig. 2):
+These results determined the correct remedy in each direction (Fig. 3):
 - **A→B:** recalibration could not restore both requirements, but adaptation could. The correct remedy was ADAPT for all nine criteria.
 - **B→A:** no remedy could meet the primary criterion, so the correct decision was BLOCK.
 - **Home control:** the correct remedy was KEEP.
@@ -317,9 +372,9 @@ No bedside score met the requirements at any cut-off in any of the 72 combinatio
 
 ### 4.2 CAB rarely switched on an unsafe model; conventional updating usually did
 
-Fig. 3 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment. Fig. 4 averages over all criteria and budgets.
+Fig. 4 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment. Fig. 5 averages over all criteria and budgets.
 
-**Conventional policies were unsafe in most runs** (Fig. 4):
+**Conventional policies were unsafe in most runs** (Fig. 5):
 
 | Policy | Unsafe | Silent failure |
 |---|---|---|
@@ -342,7 +397,7 @@ AS-IS was a silent failure in every unsafe run, because the vendor's own figures
 
 At the ICU level, classical closed testing was unsafe in 97% of runs.
 
-**CAB's decisions followed the correct remedy as labels grew** (Fig. 2):
+**CAB's decisions followed the correct remedy as labels grew** (Fig. 3):
 
 - **B→A.** CAB blocked the unrepairable model in every run at every budget from 250 labels upward.
 - **A→B.** CAB blocked while the evidence was insufficient. It then certified the adapted model in 10% of runs at 4,000 labels, 70% at 8,000 and 97% at 12,000 (about 690 septic patients).
@@ -352,7 +407,7 @@ The ablation without the adapt stage (CERT-RECAL) was almost never unsafe. It al
 
 ### 4.3 Comparison with practical alternatives
 
-Fig. 5 compares CAB with the alternatives a hospital is most likely to use instead.
+Fig. 6 compares CAB with the alternatives a hospital is most likely to use instead.
 
 **Prevalence correction did not help.** LABEL-SHIFT estimated the target's sepsis prevalence reasonably well, at 1.7% and 2.4% of patient-hours against true values of 1.4% and 2.2%. Yet it was unsafe in 100% of cross-hospital runs. The models failed because the relation between measurements and sepsis differed between the hospitals, not because sepsis was more or less common.
 
@@ -365,9 +420,9 @@ Fig. 5 compares CAB with the alternatives a hospital is most likely to use inste
 
 ### 4.4 The guarantee held at every error level
 
-Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Fig. 7 plots each setting's measured rate against the nominal level α for α = 0.01, 0.05 and 0.10. Table 4 summarises it.
+Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Fig. 8 plots each setting's measured rate against the nominal level α for α = 0.01, 0.05 and 0.10. Table 5 summarises it.
 
-**Table 4.** CAB's measured unsafe rate against the nominal level (`E12_validity.md`).
+**Table 5.** CAB's measured unsafe rate against the nominal level (`E12_validity.md`).
 
 | α | Group | Settings | Mean | Worst setting | Pooled 95% upper bound | Settings significantly above α |
 |---|---|---|---|---|---|---|
@@ -387,7 +442,7 @@ The home settings that exceeded α were those with the largest budgets. There, o
 
 ### 4.5 How many labels certification needs
 
-**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 6). To certify sensitivity at s* = 0.80, the calculator requires:
+**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 7). To certify sensitivity at s* = 0.80, the calculator requires:
 
 | True sensitivity above the target | Septic patients needed |
 |---|---|
@@ -422,11 +477,11 @@ When CAB adapted the model (A→B at 12,000 labels), it met both requirements in
 
 ### 4.7 Hospital tolerance, not vendor headroom, decides the labels needed
 
-**Headroom.** One might expect a vendor to make certification easier by shipping a threshold with extra headroom above the sensitivity target. We varied that headroom from 0 to 10 points (Fig. 8). Approval at home did not change: about 46% of runs at hospital A and 66% at hospital B, averaged over budgets.
+**Headroom.** One might expect a vendor to make certification easier by shipping a threshold with extra headroom above the sensitivity target. We varied that headroom from 0 to 10 points (Fig. 9). Approval at home did not change: about 46% of runs at hospital A and 66% at hospital B, averaged over budgets.
 
 The reason is that CAB's calibrate step chooses its own threshold from the hospital's labels. Headroom only changes whether an approval is recorded as KEEP or CALIBRATE. Large headroom (8–10 points) also raised the vendor's own false-alert rate by 6–15 points and could take it above the hospital's limit.
 
-**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 8). With 8,000 labels, approval at hospital A was:
+**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 9). With 8,000 labels, approval at hospital A was:
 
 | Tolerance m | Approval at hospital A |
 |---|---|
@@ -511,18 +566,19 @@ Importing a sepsis early-warning model is a decision with patient-safety consequ
 
 The figure files are in `outputs/sepsis/figures/` (PDF for the publisher, 300 dpi PNG for drafts).
 
-- **Fig. 1** (`fig1_transfer`). Local and imported model at each hospital: hourly AUROC, normalised utility, patient sensitivity and non-septic patients alerted, with 95% bootstrap CIs.
-- **Fig. 2** (`fig2_cab_decisions`). What CAB switched on, by number of labelled patients, in each scenario (primary criterion). The correct remedy is shown above each panel.
-- **Fig. 3** (`fig3_unsafe`). Share of runs that switched on an unsafe deployment, by policy and number of labels (primary criterion). The dashed line marks CAB's 5% bound.
-- **Fig. 4** (`fig4_overall`). Unsafe and silent-failure rates per policy, averaged over all scenarios, criteria and budgets.
-- **Fig. 5** (`fig5_baselines`). CAB against practical alternatives: unsafe and correct decisions, cross-hospital and home control.
-- **Fig. 6** (`fig6_labels`). Septic patients needed to certify sensitivity, by the true margin over the target.
-- **Fig. 7** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
-- **Fig. 8** (`fig8_tolerance`). Approval at home by the hospital's false-alert tolerance (models held fixed).
+- **Fig. 1** (`fig_workflow`). The CAB procedure. Before any local label, the hospital fixes its targets and error level. Stage 1 tests the imported model on all labels; Stage 2, reached only if Stage 1 fails, tests a model adapted on the fit half using the certification half. The first option certified is switched on; otherwise the model is blocked.
+- **Fig. 2** (`fig1_transfer`). Local and imported model at each hospital: hourly AUROC, normalised utility, patient sensitivity and non-septic patients alerted, with 95% bootstrap CIs.
+- **Fig. 3** (`fig2_cab_decisions`). What CAB switched on, by number of labelled patients, in each scenario (primary criterion). The correct remedy is shown above each panel.
+- **Fig. 4** (`fig3_unsafe`). Share of runs that switched on an unsafe deployment, by policy and number of labels (primary criterion). The dashed line marks CAB's 5% bound.
+- **Fig. 5** (`fig4_overall`). Unsafe and silent-failure rates per policy, averaged over all scenarios, criteria and budgets.
+- **Fig. 6** (`fig5_baselines`). CAB against practical alternatives: unsafe and correct decisions, cross-hospital and home control.
+- **Fig. 7** (`fig6_labels`). Septic patients needed to certify sensitivity, by the true margin over the target.
+- **Fig. 8** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
+- **Fig. 9** (`fig8_tolerance`). Approval at home by the hospital's false-alert tolerance (models held fixed).
 
-> Length note: Springer's 15–20 pages leaves room for about five figures. Keep Figs. 1, 2, 3 and 5.
-> Merge Figs. 6 and 8 into one two-panel figure, and move Figs. 4 and 7 to the supplement (with
-> Table 4 kept in the text).
+> Length note: Springer's 15–20 pages leaves room for about six figures. Keep Figs. 1–4 and 6.
+> Merge Figs. 7 and 9 into one two-panel figure, and move Figs. 5 and 8 to the supplement (with
+> Table 5 kept in the text).
 
 ---
 

@@ -1,0 +1,45 @@
+  prepared A->B in 18s (20000 patients, 1142 septic); oracle (primary) = ADAPT
+  A->B:12000:0: ADAPT
+  A->B:1000:0: BLOCK
+  prepared B->A in 35s (20336 patients, 1790 septic); oracle (primary) = BLOCK
+  B->A:1000:0: BLOCK
+# Worked example: CAB's evidence for single runs (primary criterion)
+
+s* = 0.8, false-alert limit f* = home rate + 0.05. Each test at alpha/4 = 0.0125; 'bound' is the one-sided exact (Clopper-Pearson) bound at that level.
+
+## A->B, 12,000 labelled patients (repeat 0)
+
+Labelled: 672 septic, 11328 non-septic. Certification half: 336 septic, 5664 non-septic. Vendor threshold 0.0235; home false-alert rate 0.401, so f* = 0.451.
+
+| Step | Data | Threshold | Septic detected | Sensitivity (lower bound) | Non-septic alerted | False-alert rate (upper bound) | Passed |
+|---|---|---|---|---|---|---|---|
+| Keep as is | all labelled patients | 0.0235 | 443/672 | 0.659 (0.617) | 3560/11328 | 0.314 (0.324) | no |
+| Calibrate (new threshold) | all labelled patients | 0.0112 | 561/672 | 0.835 (0.800) | 7070/11328 | 0.624 (0.634) | no |
+| Adapt (model updated on local data) | certification half | 0.0136 | 286/336 | 0.851 (0.802) | 2360/5664 | 0.417 (0.431) | yes |
+
+Decision: **ADAPT** at threshold 0.0136. On the 8,000 unlabelled target patients: sensitivity 0.866 (target 0.8), false-alert rate 0.435 (limit 0.451): safe.
+
+## A->B, 1,000 labelled patients (repeat 0)
+
+Labelled: 47 septic, 953 non-septic. Certification half: 23 septic, 476 non-septic. Vendor threshold 0.0235; home false-alert rate 0.401, so f* = 0.451.
+
+| Step | Data | Threshold | Septic detected | Sensitivity (lower bound) | Non-septic alerted | False-alert rate (upper bound) | Passed |
+|---|---|---|---|---|---|---|---|
+| Keep as is | all labelled patients | 0.0235 | 31/47 | 0.660 (0.486) | 320/953 | 0.336 (0.371) | no |
+| Calibrate (new threshold) | all labelled patients | 0.0063 | 44/47 | 0.936 (0.807) | 922/953 | 0.967 (0.979) | no |
+| Adapt (model updated on local data) | certification half | 0.0004 | 23/23 | 1.000 (0.827) | 465/476 | 0.977 (0.990) | no |
+
+Decision: **BLOCK** (correct remedy from full data: ADAPT).
+
+## B->A, 1,000 labelled patients (repeat 0)
+
+Labelled: 93 septic, 907 non-septic. Certification half: 46 septic, 453 non-septic. Vendor threshold 0.0186; home false-alert rate 0.329, so f* = 0.379.
+
+| Step | Data | Threshold | Septic detected | Sensitivity (lower bound) | Non-septic alerted | False-alert rate (upper bound) | Passed |
+|---|---|---|---|---|---|---|---|
+| Keep as is | all labelled patients | 0.0186 | 83/93 | 0.892 (0.799) | 635/907 | 0.700 (0.734) | no |
+| Calibrate (new threshold) | all labelled patients | 0.0153 | 84/93 | 0.903 (0.812) | 686/907 | 0.756 (0.788) | no |
+| Adapt (model updated on local data) | certification half | 0.0117 | 43/46 | 0.935 (0.803) | 337/453 | 0.744 (0.789) | no |
+
+Decision: **BLOCK** (correct remedy from full data: BLOCK).
+

@@ -1,5 +1,6 @@
 """Chapter figures and tables for the sepsis CAB study (reads the CSVs written by E1-E12).
 
+  fig_workflow         the CAB procedure as a flow chart (no data needed)
   fig1_transfer        imported vs local model at each hospital, with 95% bootstrap CIs (E2)
   fig2_cab_decisions   what CAB switched on, by label budget, in each setting (E3mac100, primary criterion)
   fig3_unsafe          share of runs that switched on an unsafe configuration, by policy and budget
@@ -24,7 +25,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
-from matplotlib.patches import Patch  # noqa: E402
+from matplotlib.patches import FancyBboxPatch, Patch  # noqa: E402
 
 from cabsepsis.data import REPO  # noqa: E402
 
@@ -109,6 +110,68 @@ def md(df):
 def parse_ci(s):
     lo, hi = s.strip("[]").split(",")
     return float(lo), float(hi)
+
+
+def fig_workflow():
+    fig, ax = plt.subplots(figsize=(FULL_W, 104 * MM))
+    ax.set_xlim(0, 174); ax.set_ylim(0, 104); ax.axis("off")
+
+    def box(x, y, w, h, title, body, face, edge=MUTED, tc=INK, bc=INK2):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.6",
+                                    fc=face, ec=edge, lw=0.8))
+        ax.text(x + 2.5, y + h - 2.5, title, fontsize=7.4, weight="bold", color=tc, va="top")
+        if body:
+            ax.text(x + 2.5, y + h - 7.0, body, fontsize=6.5, color=bc, va="top", linespacing=1.4)
+
+    def arrow(x0, y0, x1, y1):
+        ax.annotate("", (x1, y1), (x0, y0), arrowprops=dict(arrowstyle="-|>", color=INK2, lw=0.8,
+                                                             shrinkA=0, shrinkB=0, mutation_scale=7))
+
+    def note(x, y, s, ha="left"):
+        ax.text(x, y, s, fontsize=6.3, color=INK2, ha=ha, va="center", style="italic",
+                bbox=dict(fc=SURFACE, ec="none", pad=0.4), zorder=5)
+
+    soft = "#f4f3ef"
+    box(2, 76, 58, 26, "Fixed before any local label",
+        "Imported model, vendor threshold $\\tau_{home}$\n"
+        "Sensitivity target $s^*$\n"
+        "False-alert limit $f^* = F_{home} + m$\n"
+        "Error level $\\alpha$; each test at $\\alpha/4$", soft)
+    box(66, 76, 48, 26, "Label n patients at random",
+        "Split within septic / non-septic:\n"
+        "fit half (to adapt the model) and\n"
+        "certification half (to test it).\n"
+        "Stage 1 uses all n labels.", soft)
+    arrow(60, 89, 66, 89)
+    box(2, 41, 112, 29, "Stage 1: the imported model, all n labels",
+        "1. Certify a threshold $\\tau$: the highest one whose sensitivity $\\geq s^*$\n"
+        "    passes an exact binomial test (fixed-sequence from the sensitive end)\n"
+        "2. Exact test of the false-alert rate $\\leq f^*$ at $\\tau$\n"
+        "3. If both pass and $\\tau_{home} \\leq \\tau$: also test false alerts at $\\tau_{home}$",
+        "#eef4fc", edge="#86b6ef")
+    arrow(90, 76, 90, 70)
+    box(2, 6, 112, 29, "Stage 2: an adapted model (only if Stage 1 fails)",
+        "1. Fit on the fit half: extra boosting rounds, leaf refit, or both\n"
+        "    (chosen by AUROC on an early-stopping part of the fit half)\n"
+        "2. On the certification half: certify a threshold $\\tau_A$ and\n"
+        "    test the false-alert rate at $\\tau_A$, as in Stage 1",
+        "#e7eef8", edge="#2a78d6")
+    arrow(58, 41, 58, 35)
+    note(60, 38, "a test at $\\tau$ fails")
+    out = [("KEEP", 84, "model and vendor threshold"), ("CALIBRATE", 60, "model, new threshold $\\tau$"),
+           ("ADAPT", 30, "adapted model, threshold $\\tau_A$"), ("BLOCK", 6, "nothing switched on;\nusual care")]
+    for rem, y, txt in out:
+        face = REMEDY_COLOR[rem]
+        tc = SURFACE if rem in ("CALIBRATE", "ADAPT") else INK
+        box(130, y, 42, 14, rem.title(), txt, face, edge=face, tc=tc, bc=tc)
+    arrow(114, 64, 130, 91); note(121, 82, "all three\npass", ha="center")
+    arrow(114, 56, 130, 67); note(121, 57.5, "tests at $\\tau$\npass", ha="center")
+    arrow(114, 26, 130, 37); note(121, 27.5, "both\npass", ha="center")
+    arrow(114, 13, 130, 13); note(121, 16.5, "either\nfails", ha="center")
+    ax.text(2, 0.5, "Guarantee: P(switching on a deployment with sensitivity $< s^*$ or false-alert rate $> f^*$) "
+                    "$\\leq 4 \\times \\alpha/4 = \\alpha$, for any shift and any n.",
+            fontsize=6.6, color=INK, va="bottom")
+    save(fig, "fig_workflow")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -430,6 +493,7 @@ def main():
     oracle = pd.read_csv(SEP / f"{SOURCE}_oracle.csv")
     e1 = pd.read_csv(SEP / "E1_E2_results.csv") if (SEP / "E1_E2_results.csv").exists() else None
     print("Making figures ...")
+    fig_workflow()
     fig1_transfer(ci)
     fig2_cab_decisions(runs, oracle)
     fig3_unsafe(summ)
