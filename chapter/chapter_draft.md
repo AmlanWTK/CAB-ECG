@@ -367,9 +367,9 @@ No bedside score met the requirements at any cut-off in any of the 72 combinatio
 
 ### 4.2 CAB rarely switched on an unsafe model; conventional updating usually did
 
-Fig. 4 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment. Fig. 5 averages over all criteria and budgets.
+Fig. 4 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment. Supplementary Fig. S1 averages over all criteria and budgets.
 
-**Conventional policies were unsafe in most runs** (Fig. 5):
+**Conventional policies were unsafe in most runs** (Supplementary Fig. S1):
 
 | Policy | Unsafe | Silent failure |
 |---|---|---|
@@ -402,7 +402,7 @@ The ablation without the adapt stage (CERT-RECAL) was almost never unsafe. It al
 
 ### 4.3 Comparison with practical alternatives
 
-Fig. 6 compares CAB with the alternatives a hospital is most likely to use instead.
+Fig. 5 compares CAB with the alternatives a hospital is most likely to use instead.
 
 **Prevalence correction did not help.** LABEL-SHIFT estimated the target's sepsis prevalence reasonably well, at 1.7% and 2.4% of patient-hours against true values of 1.4% and 2.2%. Yet it was unsafe in 100% of cross-hospital runs. The models failed because the relation between measurements and sepsis differed between the hospitals, not because sepsis was more or less common.
 
@@ -415,7 +415,7 @@ Fig. 6 compares CAB with the alternatives a hospital is most likely to use inste
 
 ### 4.4 The guarantee held at every error level
 
-Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Fig. 8 plots each setting's measured rate against the nominal level α for α = 0.01, 0.05 and 0.10. Table 5 summarises it.
+Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Supplementary Fig. S2 plots each setting's measured rate against the nominal level α for α = 0.01, 0.05 and 0.10. Table 5 summarises it.
 
 **Table 5.** CAB's measured unsafe rate against the nominal level (`E12_validity.md`).
 
@@ -437,7 +437,7 @@ The home settings that exceeded α were those with the largest budgets. There, o
 
 ### 4.5 How many labels certification needs
 
-**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 7). To certify sensitivity at s* = 0.80, the calculator requires:
+**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 6a). To certify sensitivity at s* = 0.80, the calculator requires:
 
 | True sensitivity above the target | Septic patients needed |
 |---|---|
@@ -472,11 +472,11 @@ When CAB adapted the model (A→B at 12,000 labels), it met both requirements in
 
 ### 4.7 Hospital tolerance, not vendor headroom, decides the labels needed
 
-**Headroom.** One might expect a vendor to make certification easier by shipping a threshold with extra headroom above the sensitivity target. We varied that headroom from 0 to 10 points (Fig. 9). Approval at home did not change: about 46% of runs at hospital A and 66% at hospital B, averaged over budgets.
+**Headroom.** One might expect a vendor to make certification easier by shipping a threshold with extra headroom above the sensitivity target. We varied that headroom from 0 to 10 points (Fig. 6b–c). Approval at home did not change: about 46% of runs at hospital A and 66% at hospital B, averaged over budgets.
 
 The reason is that CAB's calibrate step chooses its own threshold from the hospital's labels. Headroom only changes whether an approval is recorded as KEEP or CALIBRATE. Large headroom (8–10 points) also raised the vendor's own false-alert rate by 6–15 points and could take it above the hospital's limit.
 
-**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 9). With 8,000 labels, approval at hospital A was:
+**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 6b–c). With 8,000 labels, approval at hospital A was:
 
 | Tolerance m | Approval at hospital A |
 |---|---|
@@ -490,13 +490,46 @@ The practical rule follows. The hospital should set its tolerance deliberately b
 
 ---
 
+### 4.8 Lead time and robustness
+
+**Lead time.** Certification did not cost early warning (Table 6). In A→B with 12,000 labels, the models CAB switched on:
+- detected 85% of septic patients in the window;
+- alerted 64% of all septic patients at least 6 h before onset, the highest share of any policy.
+
+Recalibration and fine-tuning alerted 58–59% that early, and the imported model as supplied 44%. The imported model's later-looking median of 11.9 h comes from detecting fewer patients, not from earlier alerts. Lead times are capped at 12 h by the detection window.
+
+**Table 6.** Lead time before sepsis onset, A→B, 12,000 labels, primary criterion (20 runs; the two reference rows are single evaluations on the target's test patients).
+
+| Alerting system | Septic patients detected | Median lead time, h (IQR) | Alerted ≥ 6 h before onset |
+|---|---|---|---|
+| CAB (adapted model) | 85% | 10.7 (5.7–12) | 64% |
+| Recalibration | 82% | 11.4 (5.1–12) | 59% |
+| Fine-tuning | 80% | 9.7 (5.2–12) | 58% |
+| Imported model, as supplied | 68% | 11.9 (3.7–12) | 44% |
+| Hospital's own local model | 80% | 7.0 (5.0–12) | 58% |
+| Modified NEWS2 ≥ 5 | 79% | 8.0 (3.8–12) | 49% |
+
+**A shorter detection window.** We repeated the cross-hospital experiment counting a septic patient as detected only from 6 h, rather than 12 h, before onset. This used 30 repeats and budgets of 1,000, 4,000 and 12,000 labels. The correct remedies were unchanged at the primary criterion: ADAPT for A→B and BLOCK for B→A. The conclusions did not change either:
+- CAB was unsafe in 0.9% of runs on average (worst setting 3.3%);
+- the conventional policies and classical updating were unsafe in 81–100%;
+- at 12,000 labels, CAB certified the adapted A→B model in every run.
+
+**Imperfect labels.** The guarantee assumes the hospital's labels are correct. We relaxed this by recording 5%, 10% or 20% of the labelled septic patients as non-septic in the data CAB sees, while still judging safety with the true labels (20 runs each).
+
+CAB became more cautious, not less safe:
+- **Unsafe rate:** it stayed at 0–5% of runs, the same as with clean labels.
+- **A→B:** CAB switched on the adapted model in 65% of runs at 20% noise, against 100% with clean labels.
+- **B→A:** CAB blocked in every run at every noise level.
+
+The reason is that a missed septic patient leaves the sensitivity test and enters the false-alert test, where it is usually alerted. Both changes make passing harder. Point-estimate recalibration remained unsafe in every run, at every noise level. Over-calling sepsis and errors in the onset time were not studied.
+
 ## 5 Application: the CAB Sepsis Monitor
 
 The prototype shows how the gate fits into a hospital's adoption of an external model. A safety officer runs the gate before anything reaches a ward, and clinicians later see which alerting system is in use and whether it was certified. It has two screens. The figures show the Beth Israel model being installed at Emory, with a random sample of 12,000 labelled patients. This sample is drawn by the application, so it differs from the one in Table 2.
 
 ### 5.1 Deployment gate
 
-The deployment gate (Fig. 10) collects the three things CAB needs and nothing more:
+The deployment gate (Fig. 7) collects the three things CAB needs and nothing more:
 
 - **The hospital's requirements.** Two sliders set the sensitivity target and the extra false-alert rate the hospital will accept above the vendor's home rate.
 - **Its labelled patients.** The user enters how many patients have been labelled and how they were chosen. Labels can be a random sample, or enriched so that half are septic. Enrichment keeps the tests valid, because sensitivity is estimated only from septic patients and false alerts only from non-septic ones.
@@ -507,13 +540,13 @@ Pressing *Run the gate* shows three things:
 - the evidence for each option, cheapest first: the counts, the exact bound and whether each test passed;
 - in this retrospective setting only, a simulation check of what each choice would have done on the patients the gate never saw.
 
-In Fig. 10, keeping the model fails, because its sensitivity can only be proven to be at least 62.3%. Recalibration proves 80% sensitivity but fails the false-alert test, with an upper bound of 63.2% against a limit of 45.1%. The adapted model passes both tests (80.2% and 37.1%).
+In Fig. 7, keeping the model fails, because its sensitivity can only be proven to be at least 62.3%. Recalibration proves 80% sensitivity but fails the false-alert test, with an upper bound of 63.2% against a limit of 45.1%. The adapted model passes both tests (80.2% and 37.1%).
 
 The simulation check shows why the proof matters. On 8,000 unseen patients, the adapted model detected 84.5% of septic patients and alerted 35.4% of non-septic patients. A simple, unproven recalibration that looked acceptable on the labelled patients would have alerted 55.6% of non-septic patients.
 
 ### 5.2 Ward monitor
 
-The ward monitor (Fig. 11) replays held-out ICU patients hour by hour, using whatever the gate switched on. If the gate blocked, it uses modified NEWS2. A header states which alerting system is in use and whether the gate certified it.
+The ward monitor (Fig. 8) replays held-out ICU patients hour by hour, using whatever the gate switched on. If the gate blocked, it uses modified NEWS2. A header states which alerting system is in use and whether the gate certified it.
 
 **The ward table** lists each bed with:
 - the current score relative to the alert threshold;
@@ -555,7 +588,7 @@ Three findings stand out.
 
 - **Two hospitals from one country.** The Challenge data come from two US hospitals and a single, retrospectively applied sepsis definition. Validation on a multi-hospital database such as eICU [18] is the natural next step.
 - **Random labelling.** The guarantee requires a random (or known-probability) sample of labelled patients. Labelling only patients that clinicians flagged, or only an early period before a seasonal change, would break it.
-- **Label accuracy.** Labels were assumed correct. In practice, sepsis onset times are uncertain.
+- **Label accuracy.** The guarantee assumes correct labels. Missed sepsis labels made CAB more cautious, not less safe (Section 4.8), but over-calling and onset-time errors were not studied.
 - **The safety criteria are a simplification.** They count detected patients within a fixed window. They do not weigh how early an alert comes, or the consequences of each missed case.
 - **Noisy judging in small settings.** Safety was judged on finite held-out patients, so in the settings with the fewest unlabelled septic patients the measured unsafe rate is itself noisy.
 - **Conservativeness.** The union bound and exact tests make CAB conservative. Measured unsafe rates were about a fifth of the nominal level, which suggests power can be recovered.
@@ -604,17 +637,15 @@ The figure files are in `outputs/sepsis/figures/` (PDF for the publisher, 300 dp
 - **Fig. 2** (`fig1_transfer`). Local and imported model at each hospital: hourly AUROC, normalised utility, patient sensitivity and non-septic patients alerted, with 95% bootstrap CIs.
 - **Fig. 3** (`fig2_cab_decisions`). What CAB switched on, by number of labelled patients, in each scenario (primary criterion). The correct remedy is shown above each panel.
 - **Fig. 4** (`fig3_unsafe`). Share of runs that switched on an unsafe deployment, by policy and number of labels (primary criterion). The dashed line marks CAB's 5% bound.
-- **Fig. 5** (`fig4_overall`). Unsafe and silent-failure rates per policy, averaged over all scenarios, criteria and budgets.
-- **Fig. 6** (`fig5_baselines`). CAB against practical alternatives: unsafe and correct decisions, cross-hospital and home control.
-- **Fig. 7** (`fig6_labels`). Septic patients needed to certify sensitivity, by the true margin over the target.
-- **Fig. 8** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
-- **Fig. 9** (`fig8_tolerance`). Approval at home by the hospital's false-alert tolerance (models held fixed).
-- **Fig. 10** (`fig_app_gate`). The deployment gate of the prototype application: the hospital's requirements, its labelled patients and the vendor package (top); the decision, the evidence for each option, cheapest first, and the retrospective simulation check (bottom).
-- **Fig. 11** (`fig_app_ward`). The ward monitor, replaying ICU patients at hour 24 with the adapted model certified in Fig. 10: the ward table with each patient's score relative to the threshold, alert status and 24-hour trend, and one patient's risk trajectory against the alert threshold.
+- **Fig. 5** (`fig5_baselines`). CAB against practical alternatives: unsafe and correct decisions, cross-hospital and home control.
+- **Fig. 6** (`fig_labels_tolerance`). What certification costs, and what moves it. (a) Septic patients needed to certify sensitivity, by the model's true margin over the target (calculator; power 0.9, α/4 per test). (b, c) Share of runs in which CAB approved the unchanged model at home, by the hospital's false-alert tolerance (models held fixed).
+- **Fig. 7** (`fig_app_gate`). The deployment gate of the prototype application: the hospital's requirements, its labelled patients and the vendor package (top); the decision, the evidence for each option, cheapest first, and the retrospective simulation check (bottom).
+- **Fig. 8** (`fig_app_ward`). The ward monitor, replaying ICU patients at hour 24 with the adapted model certified in Fig. 7: the ward table with each patient's score relative to the threshold, alert status and 24-hour trend, and one patient's risk trajectory against the alert threshold.
 
-> Length note: Springer's 15–20 pages leaves room for about eight figures. Keep Figs. 1–4, 6, 10 and 11.
-> Merge Figs. 7 and 9 into one two-panel figure, and move Figs. 5 and 8 to the supplement (with
-> Table 5 kept in the text).
+Supplementary figures (not in the chapter body):
+
+- **Supplementary Fig. S1** (`fig4_overall`). Unsafe and silent-failure rates per policy, averaged over all scenarios, criteria and budgets.
+- **Supplementary Fig. S2** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
 
 ---
 

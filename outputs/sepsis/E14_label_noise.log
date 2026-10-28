@@ -1,0 +1,81 @@
+  prepared A->B in 56s (20000 patients, 1142 septic); oracle (primary) = ADAPT
+  A->B n=12000 rep 0: 102s
+  A->B n=12000 rep 1: 204s
+  A->B n=12000 rep 2: 289s
+  A->B n=12000 rep 3: 367s
+  A->B n=12000 rep 4: 433s
+  A->B n=12000 rep 5: 532s
+  A->B n=12000 rep 6: 578s
+  A->B n=12000 rep 7: 636s
+  A->B n=12000 rep 8: 699s
+  A->B n=12000 rep 9: 751s
+  A->B n=12000 rep 10: 797s
+  A->B n=12000 rep 11: 866s
+  A->B n=12000 rep 12: 935s
+  A->B n=12000 rep 13: 999s
+  A->B n=12000 rep 14: 1059s
+  A->B n=12000 rep 15: 1131s
+  A->B n=12000 rep 16: 1183s
+  A->B n=12000 rep 17: 1241s
+  A->B n=12000 rep 18: 1310s
+  A->B n=12000 rep 19: 1371s
+  prepared B->A in 83s (20336 patients, 1790 septic); oracle (primary) = BLOCK
+  B->A n=4000 rep 0: 16s
+  B->A n=4000 rep 1: 66s
+  B->A n=4000 rep 2: 99s
+  B->A n=4000 rep 3: 115s
+  B->A n=4000 rep 4: 164s
+  B->A n=4000 rep 5: 213s
+  B->A n=4000 rep 6: 258s
+  B->A n=4000 rep 7: 292s
+  B->A n=4000 rep 8: 325s
+  B->A n=4000 rep 9: 357s
+  B->A n=4000 rep 10: 430s
+  B->A n=4000 rep 11: 474s
+  B->A n=4000 rep 12: 504s
+  B->A n=4000 rep 13: 528s
+  B->A n=4000 rep 14: 556s
+  B->A n=4000 rep 15: 620s
+  B->A n=4000 rep 16: 652s
+  B->A n=4000 rep 17: 683s
+  B->A n=4000 rep 18: 704s
+  B->A n=4000 rep 19: 728s
+# E14: imperfect sepsis labels (primary criterion)
+
+noise: share of labelled septic patients recorded as non-septic in the data CAB sees. Safety is judged with the true labels on the unlabelled patients. 20 repeats per cell, same samples as E3mac100.
+
+```
+direction      policy  noise  runs  switched_on  unsafe  sens  false_alert
+     A->B         CAB   0.00    20         1.00    0.05 0.850        0.388
+     A->B         CAB   0.05    20         0.90    0.00 0.844        0.384
+     A->B         CAB   0.10    20         0.95    0.05 0.847        0.389
+     A->B         CAB   0.20    20         0.65    0.05 0.834        0.380
+     A->B RECALIBRATE   0.00    20         1.00    1.00 0.824        0.552
+     A->B RECALIBRATE   0.05    20         1.00    1.00 0.823        0.552
+     A->B RECALIBRATE   0.10    20         1.00    1.00 0.822        0.550
+     A->B RECALIBRATE   0.20    20         1.00    1.00 0.822        0.550
+     B->A         CAB   0.00    20         0.00    0.00   NaN          NaN
+     B->A         CAB   0.05    20         0.00    0.00   NaN          NaN
+     B->A         CAB   0.10    20         0.00    0.00   NaN          NaN
+     B->A         CAB   0.20    20         0.00    0.00   NaN          NaN
+     B->A RECALIBRATE   0.00    20         1.00    1.00 0.787        0.587
+     B->A RECALIBRATE   0.05    20         1.00    1.00 0.786        0.586
+     B->A RECALIBRATE   0.10    20         1.00    1.00 0.788        0.587
+     B->A RECALIBRATE   0.20    20         1.00    1.00 0.787        0.587
+```
+
+CAB decisions:
+
+```
+remedy           ADAPT  BLOCK
+direction noise              
+A->B      0.00    1.00   0.00
+          0.05    0.90   0.10
+          0.10    0.95   0.05
+          0.20    0.65   0.35
+B->A      0.00    0.00   1.00
+          0.05    0.00   1.00
+          0.10    0.00   1.00
+          0.20    0.00   1.00
+```
+

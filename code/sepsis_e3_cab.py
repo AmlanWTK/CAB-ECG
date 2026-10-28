@@ -601,11 +601,18 @@ def main():
                     help="also run NAIVE-VAL, NAIVE-500, LABEL-SHIFT and LTT-DIRECT (no extra fits)")
     ap.add_argument("--skip-variant", action="store_true",
                     help="also run CAB-SKIP (usual split, Stage 1 skipped by the label-free screen); no extra fit")
+    ap.add_argument("--window", default=None,
+                    help="detection window for septic patients, hours relative to onset, e.g. '-6,3' "
+                         "(default -12,3; a sensitivity analysis, applies to the vendor and the target)")
     ap.add_argument("--extend-from", default=None,
                     help="start a new --tag from a copy of this tag's runs, e.g. E3v2, so only the "
                          "extra reps are computed")
     a = ap.parse_args()
     configure(a.septic_share, a.septic_cap, a.tag, a.extend_from)
+    if a.window:
+        import cabsepsis.cab as cabmod
+        cabmod.DT_EARLY, cabmod.DT_LATE = (float(x) for x in a.window.split(","))
+        print(f"Detection window: {cabmod.DT_EARLY:+g} h to {cabmod.DT_LATE:+g} h around onset")
     VARIANTS["on"], VARIANTS["skip"], VARIANTS["baselines"] = a.variants, a.skip_variant, a.baselines
     if a.summary_only:
         return summarise()

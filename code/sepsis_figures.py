@@ -9,6 +9,7 @@
   fig6_labels          septic patients needed to certify, by the model's margin over the target (E5)
   fig7_validity        measured unsafe rate of every setting against the nominal alpha (E12)
   fig8_tolerance       approval at home by the hospital's false-alert tolerance (E11)
+  fig_labels_tolerance fig6_labels and fig8_tolerance side by side (the chapter's version)
   chapter_tables.md    cohort, E1/E2 performance, E2 CIs, E3mac100 primary results
 
 Each figure is written as PDF (vector, for the publisher) and PNG (300 dpi, for drafts).
@@ -425,6 +426,53 @@ def fig8_tolerance(sim):
     save(fig, "fig8_tolerance")
 
 
+def fig_labels_tolerance(an, sim):
+    """(a) the label calculator; (b, c) approval at home by false-alert tolerance (E5 + E11)."""
+    fig = plt.figure(figsize=(FULL_W, 60 * MM))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1, 1], wspace=0.32)
+    ax = fig.add_subplot(gs[0])
+    a = an[an.table == "septic"]
+    colors = {0.75: "#86b6ef", 0.80: "#2a78d6", 0.85: "#104281"}
+    marks = {0.75: "^", 0.80: "o", 0.85: "s"}
+    for s, q in a.groupby("target"):
+        q = q.sort_values("gap")
+        ax.plot(100 * q.gap, q.needed, marker=marks[s], color=colors[s], ms=4, lw=1.3, mec=SURFACE,
+                mew=0.6, label=f"s* = {s:.2f}")
+    ax.set_yscale("log")
+    ticks = [100, 200, 500, 1000, 2000, 5000]
+    ax.set_yticks(ticks, [f"{v:,}" for v in ticks])
+    ax.minorticks_off()
+    ax.set_xticks(sorted(100 * a.gap.unique()))
+    ax.set_xlabel("True sensitivity above target (points)")
+    ax.set_ylabel("Septic patients needed")
+    ax.legend(frameon=False, loc="upper right", fontsize=6.8)
+    ax.set_title("(a) Labels to certify sensitivity", pad=6)
+    q = sim[np.isclose(sim.s_star, PRIMARY[0]) & np.isclose(sim.headroom, 0)].copy()
+    q["approved"] = q.P_KEEP + q.P_CALIBRATE
+    tol_c = {0.0: "#86b6ef", 0.05: "#2a78d6", 0.10: "#104281"}
+    tol_m = {0.0: "^", 0.05: "o", 0.10: "s"}
+    for k, d in enumerate(["A->A", "B->B"]):
+        ax = fig.add_subplot(gs[k + 1], sharey=None)
+        r = q[q.direction == d]
+        budgets = sorted(r.n_labelled.unique())
+        x = np.arange(len(budgets))
+        for m in sorted(r.margin.unique()):
+            s = r[np.isclose(r.margin, m)].set_index("n_labelled").reindex(budgets)
+            ax.plot(x, 100 * s.approved, marker=tol_m[round(m, 2)], color=tol_c[round(m, 2)], ms=4, lw=1.3,
+                    mec=SURFACE, mew=0.6, label=f"+{100 * m:.0f} points")
+        ax.set_xticks(x, [fmt_n(int(n)) for n in budgets])
+        ax.set_ylim(-3, 103)
+        ax.set_yticks([0, 25, 50, 75, 100])
+        ax.set_xlabel("Labelled patients")
+        ax.set_title(f"({'bc'[k]}) {SITE[d[0]]}, home", pad=6)
+        if k == 0:
+            ax.set_ylabel("Runs approved (%)")
+        else:
+            ax.set_yticklabels([])
+            ax.legend(frameon=False, loc="lower right", fontsize=6.8, title="Tolerance", title_fontsize=6.8)
+    save(fig, "fig_labels_tolerance")
+
+
 # ----------------------------------------------------------------------------------------------
 def tables(e1, ci, summ, oracle):
     out = ["# Chapter tables (sepsis CAB study)", ""]
@@ -502,6 +550,7 @@ def main():
     fig6_labels(pd.read_csv(SEP / "E5_analytic.csv"))
     fig7_validity(pd.read_csv(SEP / "E12_validity.csv"))
     fig8_tolerance(pd.read_csv(SEP / "E11_headroom_sim.csv"))
+    fig_labels_tolerance(pd.read_csv(SEP / "E5_analytic.csv"), pd.read_csv(SEP / "E11_headroom_sim.csv"))
     tables(e1, ci, summ, oracle)
     print(f"Done: {FIG}")
 
