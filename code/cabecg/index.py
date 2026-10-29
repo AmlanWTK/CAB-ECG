@@ -53,7 +53,11 @@ def build_ptbxl():
 def _wfdb_rows(hea_files, source_of):
     rows = []
     for hea in tqdm(hea_files, desc="headers", unit="rec", mininterval=2):
-        h = parse_header(hea)
+        try:
+            h = parse_header(hea)
+        except (ValueError, IndexError) as e:  # e.g. JS01052.hea, whose lead I line is merged into the record line
+            print(f"  skipped malformed header {hea.name}: {e}")
+            continue
         source = source_of(h["record"])
         rows.append({
             "source": source, "record_id": f"{source}_{h['record']}",
