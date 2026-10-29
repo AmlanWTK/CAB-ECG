@@ -151,8 +151,9 @@ Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021
 - Ningbo AF from the flutter code (secondary): CAB blocks in every run under the primary
   criterion, correctly. Even the oracle threshold for 90% sensitivity gives FPR 0.043 against
   f* = 0.018, and an adapted head 0.021. False positives are mostly sinus tachycardia, premature
-  atrial contractions and atrial tachycardia. NAIVE-VAL is unsafe in 12-36% of runs, NAIVE-500
-  in 9-21%. Under the absolute margin CAB switches on in 42% of runs, unsafe 2.1%.
+  atrial contractions and atrial tachycardia. NAIVE-VAL is unsafe in 13-36% of runs (after the
+  unreadable record was dropped; 12-36% before). Under the absolute margin CAB switches on in 41%
+  of runs, unsafe 1.6% (42% and 2.1% before the drop).
 
 ## Seeds and amplitude (2026-10-29)
 
