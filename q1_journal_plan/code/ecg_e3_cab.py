@@ -60,6 +60,9 @@ ALPHA = 0.05
 TARGETS = ["georgia", "cpsc_2018", "cpsc_2018_extra", "chapman_shaoxing", "ningbo", "code15"]
 POLICIES = ["AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "NAIVE-VAL", "NAIVE-500",
             "LTT-DIRECT", "CERT-RECAL", "CAB"]
+# Secondary transfers, kept out of the primary tables: (name, panel finding scored, label column).
+# Ningbo codes AF with the atrial-flutter code (E0 audit, notes/ecg_design.md).
+SECONDARY = {"ningbo": [("AF_from_AFL", "AF", "AFL")]}
 MIN_UNLABELLED_POS = 50   # judging rule (notes/ecg_design.md): expected unlabelled positives
                           # at the largest budget used for the target
 
@@ -75,8 +78,10 @@ def judged_findings(meta, budgets):
 
 def load_scores(source, idx):
     z = np.load(SCORES / f"{source}.npz", allow_pickle=True)
-    meta = idx.loc[z["record_id"]]
-    return z["score"].astype(np.float64), z["emb"], meta
+    ids = pd.read_csv(OUT / "signals" / f"{source}_ids.csv").set_index("record_id")
+    ok = ids.loc[z["record_id"], "n_valid"].to_numpy() > 0  # unreadable records were cached as zeros
+    meta = idx.loc[z["record_id"][ok]]
+    return z["score"][ok].astype(np.float64), z["emb"][ok], meta
 
 
 def home_operating_points(idx):
@@ -122,7 +127,9 @@ def run_target(target, idx, home, budgets, reps, out_csv):
     n_rec = len(meta)
     base = 100 + zlib.crc32(target.encode()) % 900
     findings = judged_findings(meta, budgets)
-    print(f"{target}: {n_rec} ECGs; findings {findings}", flush=True)
+    transfers = [(f, PANEL.index(f), f) for f in findings]
+    transfers += [(name, PANEL.index(f), col) for name, f, col in SECONDARY.get(target, [])]
+    print(f"{target}: {n_rec} ECGs; transfers {[t[0] for t in transfers]}", flush=True)
     rows = []
     t0 = time.time()
     for n in [b for b in budgets if b <= n_rec // 2]:
@@ -135,10 +142,8 @@ def run_target(target, idx, home, budgets, reps, out_csv):
             lab500 = np.zeros(n_rec, bool)
             lab500[lab_idx[:500]] = True
             unl = ~lab
-            for k, f in enumerate(PANEL):
-                if f not in findings:
-                    continue
-                y = meta[f].to_numpy().astype(bool)
+            for f, k, ycol in transfers:
+                y = np.nan_to_num(meta[ycol].to_numpy(dtype=float)).astype(bool)
                 frng = np.random.default_rng(seed + 7919 * (k + 1))
                 cert = np.zeros(n_rec, bool)
                 for grp in (lab_idx[y[lab_idx]], lab_idx[~y[lab_idx]]):
@@ -151,7 +156,7 @@ def run_target(target, idx, home, budgets, reps, out_csv):
                 ada = None if p_ad is None else {"wmax": p_ad, "smax": p_ad, "septic": y}
                 n_pos_unl = int((unl & y).sum())
                 for s_star in S_STARS:
-                    h = home[(f, s_star)]
+                    h = home[(PANEL[k], s_star)]
                     tau_lf = float(np.quantile(p_all[unl, k], 1 - h["share"]))
                     for mname, mfun in MARGINS.items():
                         f_star = mfun(h["fpr"])
@@ -196,7 +201,31 @@ def run_target(target, idx, home, budgets, reps, out_csv):
     return res
 
 
+def secondary_section(sec):
+    """Report lines for the secondary transfers (primary criterion, both judges)."""
+    if sec.empty:
+        return []
+    lines = ["## Secondary transfers", "",
+             "Not in the tables above. " + "; ".join(
+                 f"{t} {name}: score of {f}, label column {col}"
+                 for t, v in SECONDARY.items() for name, f, col in v) + ".", ""]
+    prim = sec[(sec.s_star == PRIMARY[0]) & (sec.margin == PRIMARY[1])]
+    for (t, f), g in prim.groupby(["target", "finding"]):
+        tab = g.pivot_table(index="policy", columns="n_labelled", values="unsafe", aggfunc="mean")
+        tab_c = g.pivot_table(index="policy", columns="n_labelled", values="unsafe_cohort", aggfunc="mean")
+        mix = g[g.policy == "CAB"].groupby("n_labelled").remedy.value_counts(normalize=True).unstack(fill_value=0)
+        lines += [f"{t} {f}, unsafe rate by budget (primary judge):", "", "```",
+                  tab.reindex(POLICIES).round(3).to_string(), "```", "",
+                  f"{t} {f}, unsafe rate by budget (whole-cohort judge):", "", "```",
+                  tab_c.reindex(POLICIES).round(3).to_string(), "```", "",
+                  f"{t} {f}, CAB decisions by budget:", "", "```", mix.round(2).to_string(), "```", ""]
+    return lines
+
+
 def summarise(res, tag):
+    secondary = {name for v in SECONDARY.values() for name, _, _ in v}
+    sec = res[res.finding.isin(secondary)]
+    res = res[~res.finding.isin(secondary)]
     prim = res[(res.s_star == PRIMARY[0]) & (res.margin == PRIMARY[1])]
     by_t = prim.groupby(["policy", "target", "finding"]).agg(unsafe=("unsafe", "mean")).reset_index()
     over = by_t.groupby("policy").agg(transfers=("unsafe", "size"), mean_unsafe=("unsafe", "mean"),
@@ -247,6 +276,7 @@ def summarise(res, tag):
              "Unsafe rate by label budget:", "", "```", bud_c.round(3).to_string(), "```", "",
              "CAB at a single transfer and budget above alpha under either judge:", "", "```",
              cells_over.round(3).to_string() if len(cells_over) else "(none)", "```", ""]
+    lines += secondary_section(sec)
     (OUT / f"{tag}_report.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines[:14]))
 
@@ -268,6 +298,7 @@ def main():
         if out_csv.exists():
             runs = pd.read_csv(out_csv)
             keep = judged_findings(idx[idx["source"] == t], budgets)
+            keep += [name for name, _, _ in SECONDARY.get(t, [])]
             parts.append(runs[runs["finding"].isin(keep)])  # runs made under the older 20-positive rule
         elif not a.summary_only and (SCORES / f"{t}.npz").exists():
             parts.append(run_target(t, idx, home, budgets, a.reps, out_csv))

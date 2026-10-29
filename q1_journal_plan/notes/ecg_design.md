@@ -119,3 +119,37 @@ The gate is `cab_select` in `code/cabsepsis/cab.py`, unchanged: with one score p
   exceed alpha: Georgia IAVB at 4,000 (0.07), Ningbo LBBB and STach at 16,000 (0.07, 0.06).
   The secondary judge gives 0.01, 0.00, 0.00 for these, mean unsafe 0.1%, worst 0.8%.
   NAIVE-VAL: 33-34% mean under either judge.
+
+## Label audit (E0, 2026-10-29)
+
+Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021 tables.
+
+- Ningbo AF: no record carries the AF code, but 21.8% carry the atrial-flutter code (0.3-4.3%
+  elsewhere). The imported AF score on these records has median 0.975, like true AF elsewhere
+  (0.95-0.99) and unlike true flutter at PTB-XL (0.11) and Georgia (0.30). So Ningbo's flutter
+  code almost certainly stands for AF. Decided 2026-10-29: AF stays out of the primary results
+  at Ningbo; "Ningbo AF from the flutter code" is a declared secondary transfer (AF score,
+  AFL label), reported in its own section of E3_report.md.
+- CPSC 2018 RBBB: 27% prevalence and no incomplete-RBBB code. 32% of its RBBB positives get an
+  imported RBBB score below 0.1, against 1-6% at sites that code incomplete RBBB separately
+  (Chapman, also without the code, 12%). So CPSC 2018 most likely files incomplete RBBB under
+  RBBB: a definition shift between sites, which the labels cannot undo. Decided 2026-10-29:
+  kept in the primary results and reported as a definition shift the gate has to catch.
+- Bug fixed in `code/cabecg/index.py`: JS23074.hea names its record "S23074", and the
+  Chapman/Ningbo split read the header name, so this Ningbo record was filed under Chapman.
+  The record name now comes from the file name. Counts: Chapman 10,246 (10,247 less the
+  malformed JS01052), Ningbo 34,905, both as expected. Chapman and Ningbo caches, scores and E3
+  runs must be rebuilt.
+- Signals: lead II amplitude as expected (0.53-0.66 mV at the 99th percentile) except CODE-15%
+  (1.56 mV), as already found. 4 of 60 sampled Ningbo records have a flat lead.
+- JS23074 itself is unreadable (no lead I; one lead is named "84"). Records that could not be
+  read are cached as zeros and are now dropped when scores are loaded for E3 (Ningbo: 34,904).
+- Rerun after E0 (Chapman and Ningbo rebuilt; other sites unchanged): 31 primary transfers,
+  CAB mean unsafe 0.4%, worst 2.2%, none above alpha; NAIVE-VAL 33% (worst 70%). Cells above
+  alpha under the primary judge: Georgia IAVB at 4,000 (0.07), Ningbo LBBB and STach at 16,000
+  (0.07, 0.06); whole-cohort judge 0.01, 0.00, 0.00.
+- Ningbo AF from the flutter code (secondary): CAB blocks in every run under the primary
+  criterion, correctly. Even the oracle threshold for 90% sensitivity gives FPR 0.043 against
+  f* = 0.018, and an adapted head 0.021. False positives are mostly sinus tachycardia, premature
+  atrial contractions and atrial tachycardia. NAIVE-VAL is unsafe in 12-36% of runs, NAIVE-500
+  in 9-21%. Under the absolute margin CAB switches on in 42% of runs, unsafe 2.1%.

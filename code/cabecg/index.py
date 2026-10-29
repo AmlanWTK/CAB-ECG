@@ -58,10 +58,11 @@ def _wfdb_rows(hea_files, source_of):
         except (ValueError, IndexError) as e:  # e.g. JS01052.hea, whose lead I line is merged into the record line
             print(f"  skipped malformed header {hea.name}: {e}")
             continue
-        source = source_of(h["record"])
+        rec = hea.stem  # not h["record"]: JS23074.hea names its record "S23074"
+        source = source_of(rec)
         rows.append({
-            "source": source, "record_id": f"{source}_{h['record']}",
-            "patient_id": f"{source}_{h['record']}",  # no patient IDs: record-level
+            "source": source, "record_id": f"{source}_{rec}",
+            "patient_id": f"{source}_{rec}",  # no patient IDs: record-level
             "age": h["age"], "sex": h["sex"], "fs": h["fs"], "n_samples": h["n_samples"],
             "file": rel(hea), "dx_raw": ";".join(h["dx"]), **labels_from_snomed(h["dx"]),
         })
