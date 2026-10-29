@@ -167,3 +167,18 @@ Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021
   except SB at 8,000 labels (2% of runs), with no unsafe runs beyond 0.2%. NAIVE-VAL is
   unsafe in 17% of runs (12% as distributed), NAIVE-500 in 11% (5%). The Brazil result is not a
   scaling artefact: the shift there is larger than amplitude alone.
+
+## Conformal risk control comparator (2026-10-29)
+
+- CRC added (WP7): on the imported score with all labels, the highest threshold whose CRC
+  bound on the miss rate is at most 1 - s*, switched on only if the CRC bound on the FPR is at
+  most f*. It controls both rates in expectation over the labelled sample. Simulation check:
+  mean sensitivity 0.901, but 44% of draws below 0.90.
+- Rerun of all three seeds: every earlier run reproduced exactly; only the CRC rows are new.
+- Primary criterion, 31 transfers, three seeds: CRC mean unsafe 15-17%, worst transfer
+  44-48%, 17-19 transfers above alpha; whole-cohort judge 14-16%. CAB 0.3-0.4%, none above
+  alpha. When CRC switches a finding on, 54% of those runs are unsafe, almost all on
+  sensitivity (51%) rather than FPR (5%): the expected miss rate is controlled, the realised one
+  is not. CRC's unsafe rate grows with the budget (10% at 250 labels, 47% at 16,000) because it
+  switches on more often while still missing the target about half the time.
+- Other criteria (seed 0): CRC 16-29% mean unsafe, worst 44-50%; CAB 0.4-0.6%, worst 2.0-2.4%.

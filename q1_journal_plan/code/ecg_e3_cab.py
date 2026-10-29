@@ -19,6 +19,11 @@ Policies (as in the sepsis chapter):
     NAIVE-500    keep or recalibrate on point estimates from the first 500 labels
     LTT-DIRECT   Learn-then-Test over both models on the certification half
     CERT-RECAL   CAB without the adapt stage
+    CRC          conformal risk control (Angelopoulos et al., ICLR 2024) on the imported model:
+                 the highest threshold whose CRC bound on the miss rate is at most 1 - s*,
+                 switched on only if the CRC bound on the false-positive rate is at most f*.
+                 Controls both rates in expectation over the labelled sample, not with high
+                 probability as CAB does.
     CAB          certified KEEP -> CALIBRATE -> ADAPT -> BLOCK (cabsepsis.cab.cab_select)
 ADAPT is a logistic-regression head on the frozen network's embedding and the imported logit,
 fitted on the half of the labels not used for certification.
@@ -59,7 +64,7 @@ MARGINS = {"relative": lambda f: max(2 * f, f + 0.01), "absolute": lambda f: f +
 ALPHA = 0.05
 TARGETS = ["georgia", "cpsc_2018", "cpsc_2018_extra", "chapman_shaoxing", "ningbo", "code15"]
 POLICIES = ["AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "NAIVE-VAL", "NAIVE-500",
-            "LTT-DIRECT", "CERT-RECAL", "CAB"]
+            "LTT-DIRECT", "CERT-RECAL", "CRC", "CAB"]
 # Secondary transfers, kept out of the primary tables: (name, panel finding scored, label column).
 # Ningbo codes AF with the atrial-flutter code (E0 audit, notes/ecg_design.md).
 SECONDARY = {"ningbo": [("AF_from_AFL", "AF", "AFL")]}
@@ -111,6 +116,19 @@ def fit_adapt(Z, y, fit):
     sc = StandardScaler().fit(Z[fit])
     lr = LogisticRegression(C=0.1, max_iter=2000).fit(sc.transform(Z[fit]), y[fit])
     return lr.predict_proba(sc.transform(Z))[:, 1]
+
+
+def crc_threshold(s_pos, s_neg, s_star, f_star):
+    """Conformal risk control with a 0/1 loss bounded by 1: a threshold tau is accepted when
+    (n / (n + 1)) * risk_hat(tau) + 1 / (n + 1) <= epsilon. Miss rate (epsilon = 1 - s*) sets the
+    highest tau; the false-positive bound (epsilon = f*) is then checked at that tau."""
+    n, m = len(s_pos), len(s_neg)
+    k_max = int(np.floor((1 - s_star) * (n + 1) - 1))  # most misses allowed: (k + 1) / (n + 1) <= 1 - s*
+    if n == 0 or m == 0 or k_max < 0:
+        return np.nan
+    tau = float(np.sort(s_pos)[k_max])  # k_max positives score below tau (ties aside)
+    fp = int((s_neg >= tau).sum())
+    return tau if (fp + 1) / (m + 1) <= f_star else np.nan
 
 
 def judge(m, tau, y, mask, f_star, s_star):
@@ -179,6 +197,8 @@ def run_target(target, idx, home, budgets, reps, out_csv):
                             "NAIVE-500": (pick.get(r5), t5, r5),
                             "LTT-DIRECT": (pick.get(rl), tl, rl),
                             "CERT-RECAL": (pick.get(cr), tau_cr, cr),
+                            "CRC": (src, crc_threshold(p_all[lab & y, k], p_all[lab & ~y, k],
+                                                       s_star, f_star), "CALIBRATE"),
                             "CAB": (pick.get(remedy), tau_cab, remedy),
                         }
                         for pol, (m, tau, rem) in choices.items():
