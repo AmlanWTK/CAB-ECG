@@ -78,7 +78,7 @@ def judged_findings(meta, budgets):
 
 def load_scores(source, idx):
     z = np.load(SCORES / f"{source}.npz", allow_pickle=True)
-    ids = pd.read_csv(OUT / "signals" / f"{source}_ids.csv").set_index("record_id")
+    ids = pd.read_csv(OUT / "signals" / f"{source.removesuffix('_half')}_ids.csv").set_index("record_id")
     ok = ids.loc[z["record_id"], "n_valid"].to_numpy() > 0  # unreadable records were cached as zeros
     meta = idx.loc[z["record_id"][ok]]
     return z["score"][ok].astype(np.float64), z["emb"][ok], meta
@@ -125,7 +125,7 @@ def judge(m, tau, y, mask, f_star, s_star):
 def run_target(target, idx, home, budgets, reps, out_csv):
     p_all, emb, meta = load_scores(target, idx)
     n_rec = len(meta)
-    base = 100 + zlib.crc32(target.encode()) % 900
+    base = 100 + zlib.crc32(target.removesuffix("_half").encode()) % 900  # code15_half: same draws as code15
     findings = judged_findings(meta, budgets)
     transfers = [(f, PANEL.index(f), f) for f in findings]
     transfers += [(name, PANEL.index(f), col) for name, f, col in SECONDARY.get(target, [])]
@@ -287,8 +287,11 @@ def main():
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--budgets", default="250,500,1000,2000,4000,8000,16000")
     ap.add_argument("--tag", default="E3")
+    ap.add_argument("--scores", default="scores", help="folder under outputs/ecg, e.g. scores_seed1")
     ap.add_argument("--summary-only", action="store_true")
     a = ap.parse_args()
+    global SCORES
+    SCORES = OUT / a.scores
     idx = pd.read_csv(INDEX_CSV, low_memory=False).set_index("record_id")
     home = home_operating_points(idx)
     budgets = [int(b) for b in a.budgets.split(",")]
@@ -297,7 +300,7 @@ def main():
         out_csv = OUT / f"{a.tag}_runs_{t}.csv"
         if out_csv.exists():
             runs = pd.read_csv(out_csv)
-            keep = judged_findings(idx[idx["source"] == t], budgets)
+            keep = judged_findings(idx[idx["source"] == t.removesuffix("_half")], budgets)
             keep += [name for name, _, _ in SECONDARY.get(t, [])]
             parts.append(runs[runs["finding"].isin(keep)])  # runs made under the older 20-positive rule
         elif not a.summary_only and (SCORES / f"{t}.npz").exists():

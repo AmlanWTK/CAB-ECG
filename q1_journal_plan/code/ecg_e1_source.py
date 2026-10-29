@@ -150,13 +150,17 @@ def main():
         OUT.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), weights)
 
-    SCORES.mkdir(parents=True, exist_ok=True)
+    sfx = "" if a.seed == 0 else f"_seed{a.seed}"   # seed 0 keeps the original paths
+    scores = OUT / f"scores{sfx}"
+    scores.mkdir(parents=True, exist_ok=True)
+    jobs = [(f.name[: -len("_ids.csv")], 1.0) for f in sorted(CACHE.glob("*_ids.csv"))]
+    jobs += [("code15_half", 0.5)] if any(s == "code15" for s, _ in jobs) else []
     rows = []
-    for f in sorted(CACHE.glob("*_ids.csv")):
-        source = f.name[: -len("_ids.csv")]
-        Xs, ids_s = load_cache(source)
-        p, e = predict(model, Xs)
-        np.savez(SCORES / f"{source}.npz", record_id=ids_s["record_id"].to_numpy(), score=p, emb=e)
+    for source, scale in jobs:
+        # code15_half: CODE-15% with signals halved, the amplitude sensitivity analysis
+        Xs, ids_s = load_cache(source.removesuffix("_half"))
+        p, e = predict(model, Xs if scale == 1.0 else np.asarray(Xs, np.float32) * scale)
+        np.savez(scores / f"{source}.npz", record_id=ids_s["record_id"].to_numpy(), score=p, emb=e)
         m = idx.loc[ids_s["record_id"]]
         keep = (m["strat_fold"].to_numpy() == 10) if source == "ptbxl" else np.ones(len(m), bool)
         for k, name in enumerate(PANEL):
@@ -168,14 +172,14 @@ def main():
                          "positives": n_pos, "auroc": auc})
         print(f"scored {source}")
     res = pd.DataFrame(rows)
-    res.to_csv(OUT / "E1_source.csv", index=False)
+    res.to_csv(OUT / f"E1_source{sfx}.csv", index=False)
     table = res.pivot(index="source", columns="finding", values="auroc")[PANEL].round(3)
     npos = res.pivot(index="source", columns="finding", values="positives")[PANEL]
     lines = ["# E1 (ECG): PTB-XL model at home (fold 10) and imported", "",
              f"Best validation mean AUROC {best:.4f}. Seed {a.seed}.", "",
              "AUROC:", "", "```", table.to_string(), "```", "",
              "Positives:", "", "```", npos.to_string(), "```", ""]
-    (OUT / "E1_source.md").write_text("\n".join(lines), encoding="utf-8")
+    (OUT / f"E1_source{sfx}.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
 
 

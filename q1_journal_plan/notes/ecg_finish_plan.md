@@ -8,9 +8,9 @@ paper, with every result reproducible from committed code. Design and results so
 
 | # | Step | What done looks like | Effort |
 |---|---|---|---|
-| 1 | Label audit (E0) | `code/audit_e0.py` run on all seven cohorts. Decisions recorded for: Ningbo AF (no positives under the AF code: missing, or coded differently?), CPSC 2018 RBBB (does it include incomplete RBBB?), AF vs atrial flutter at each site. Any change to the label map reruns E1 scoring and E3. | half a day |
-| 2 | Source-model seeds | Two more training seeds (1, 2) of the PTB-XL ResNet, each scored and run through E3. Report the spread of the CAB and comparator results across the three seeds. | about 1 hour of compute per seed |
-| 3 | CODE-15% amplitude | E3 rerun on CODE-15% with signals halved, as the pre-specified sensitivity analysis. Shows whether the all-BLOCK result there is a scaling artefact. | 1 hour |
+| 1 | Label audit (E0) (done) | `code/audit_e0.py` run on all seven cohorts. Decisions recorded for: Ningbo AF (no positives under the AF code: missing, or coded differently?), CPSC 2018 RBBB (does it include incomplete RBBB?), AF vs atrial flutter at each site. Any change to the label map reruns E1 scoring and E3. | half a day |
+| 2 | Source-model seeds (done) | Two more training seeds (1, 2) of the PTB-XL ResNet, each scored and run through E3. Report the spread of the CAB and comparator results across the three seeds. | about 1 hour of compute per seed |
+| 3 | CODE-15% amplitude (done) | E3 rerun on CODE-15% with signals halved, as the pre-specified sensitivity analysis. Shows whether the all-BLOCK result there is a scaling artefact. | 1 hour |
 | 4 | Conformal risk control | Added as a comparator (WP7): threshold chosen by CRC on the labelled ECGs to control the expected miss rate. Judged with both judges, like the others. | half a day |
 | 5 | Labels needed | For each transfer: the smallest budget at which CAB switches on in at least half of runs, against prevalence. Plus the analytic floor (positives needed at delta = alpha/4, divided by prevalence). | 2 hours |
 | 6 | Clinician-facing numbers | At each switched-on threshold: positive predictive value and alerts per 1,000 ECGs, next to sensitivity and FPR (WP4 for ECG). | 2 hours |

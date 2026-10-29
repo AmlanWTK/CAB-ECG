@@ -153,3 +153,17 @@ Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021
   f* = 0.018, and an adapted head 0.021. False positives are mostly sinus tachycardia, premature
   atrial contractions and atrial tachycardia. NAIVE-VAL is unsafe in 12-36% of runs, NAIVE-500
   in 9-21%. Under the absolute margin CAB switches on in 42% of runs, unsafe 2.1%.
+
+## Seeds and amplitude (2026-10-29)
+
+- Source-model seeds 1 and 2 trained like seed 0 (validation mean AUROC 0.9856, 0.9858 vs
+  0.9862) and run through E3 (`E3seed1_report.md`, `E3seed2_report.md`; scores in
+  `scores_seed1/`, `scores_seed2/`). Over the three seeds, primary criterion, 31 transfers:
+  CAB mean unsafe 0.3-0.4%, worst transfer 1.9-2.2%, none above alpha; whole-cohort judge
+  0.1%, worst 0.8-0.9%. CAB switched on in 13-15% of runs. NAIVE-VAL 33-37% (worst 70-72%),
+  NAIVE-500 28-31%, RECALIBRATE 86-87%, AS-IS 94-97%. The conclusions do not depend on the seed.
+- CODE-15% with signals halved (`E3amp_report.md`; target `code15_half`, the same random draws
+  as `code15`): AUROC rises to 0.86-0.95, but CAB still blocks every finding at every budget
+  except SB at 8,000 labels (2% of runs), with no unsafe runs beyond 0.2%. NAIVE-VAL is
+  unsafe in 17% of runs (12% as distributed), NAIVE-500 in 11% (5%). The Brazil result is not a
+  scaling artefact: the shift there is larger than amplitude alone.
