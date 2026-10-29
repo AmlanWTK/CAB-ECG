@@ -182,3 +182,26 @@ Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021
   is not. CRC's unsafe rate grows with the budget (10% at 250 labels, 47% at 16,000) because it
   switches on more often while still missing the target about half the time.
 - Other criteria (seed 0): CRC 16-29% mean unsafe, worst 44-50%; CAB 0.4-0.6%, worst 2.0-2.4%.
+
+## Labels needed and ward numbers (E5, 2026-10-29)
+
+`ecg_e5_labels.py` -> `outputs/ecg/<tag>_E5_labels.md`. Primary criterion, CAB.
+
+- Label floor: 42 positives with no misses are needed to pass the exact test of sens >= 0.90
+  at delta = alpha/4, so at least 42 / prevalence labels for CALIBRATE and twice that for
+  ADAPT (e.g. 111 at Chapman SB, 5,912 at Ningbo LBBB).
+- Why each of the 31 primary transfers ended as it did (seed 0; seeds 1 and 2 in brackets):
+  switched on in at least half of runs at some budget 7 (8, 10); no safe remedy exists even
+  with every label, oracle check 14 (12, 13); a safe remedy exists but the budgets were too small
+  10 (11, 8). The six transfers that change between seeds are borderline: AF at CPSC 2018,
+  Chapman and Ningbo (flutter code) between "no safe remedy" and "too few labels", and Georgia
+  IAVB, Ningbo LBBB and CODE-15% SB between "too few labels" and "switched on".
+- So most blocks are correct (no safe remedy), and the rest are a label-count limit, which is
+  what WP6 (positive-enriched labelling) has to attack.
+- Ward numbers in switched-on runs (seed 0, medians on unlabelled ECGs): sensitivity 0.92-0.94
+  throughout. PPV is high for SB at Chapman and Ningbo (0.90-0.95) and STach (0.92-0.93), but
+  low for IAVB (0.16-0.56; FPR about 0.09-0.13 against f* 0.158) and moderate for Ningbo LBBB
+  (0.52) and RBBB (0.79). Alerts per 1,000 ECGs range from 13 (Ningbo LBBB) to 374 (Chapman SB).
+  The safety criteria are relative to home performance, so a finding can pass them and still
+  give mostly false alerts where it is rare. For WP4: a PPV or alerts-per-1,000 floor set with
+  clinicians would add a third criterion, tested like the other two (method to be worked out).
