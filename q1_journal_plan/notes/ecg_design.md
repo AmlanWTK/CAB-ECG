@@ -205,3 +205,21 @@ Report in `outputs/audit/E0_audit.md`; all SNOMED codes match the Challenge 2021
   The safety criteria are relative to home performance, so a finding can pass them and still
   give mostly false alerts where it is rare. For WP4: a PPV or alerts-per-1,000 floor set with
   clinicians would add a third criterion, tested like the other two (method to be worked out).
+
+## Figures (2026-10-29)
+
+`ecg_figures.py` -> `outputs/ecg/figures/F1-F4` (PDF and 300 dpi PNG, chapter style; policy
+colours checked with the dataviz palette validator, with marker shapes as second encoding).
+F1 unsafe rate per transfer by policy (seed 0, mean range over three seeds); F2 share of runs
+CAB switches on, per transfer and budget; F3 labels needed against prevalence with the 42- and
+84-positive floors; F4 primary vs whole-cohort judge per transfer and budget.
+
+- Judge check while drawing F4: two NAIVE-VAL cells (Ningbo LBBB at 8,000 and 16,000) are
+  unsafe in 9% and 27% of runs on the remainder but 0% on the whole cohort. These runs KEEP the
+  vendor threshold, whose whole-cohort sensitivity is 0.915; the remainder (130-200 positives)
+  scatters around it. Remainder noise again, not a cohort-judge artefact.
+- The whole-cohort judge includes the labelled records a threshold was set on, so it is
+  slightly optimistic: in switched-on runs its sensitivity is higher than the remainder's by
+  0.1 (CAB) to 0.3 (NAIVE-VAL) percentage points on average. Small, but it should be stated.
+  A cleaner judge for the journal: hold out a fixed evaluation set that is never available for
+  labelling, and draw the budgets from the rest.

@@ -14,7 +14,7 @@ paper, with every result reproducible from committed code. Design and results so
 | 4 | Conformal risk control (done) | Added as a comparator (WP7): threshold chosen by CRC on the labelled ECGs to control the expected miss rate. Judged with both judges, like the others. | half a day |
 | 5 | Labels needed (done) | For each transfer: the smallest budget at which CAB switches on in at least half of runs, against prevalence. Plus the analytic floor (positives needed at delta = alpha/4, divided by prevalence). | 2 hours |
 | 6 | Clinician-facing numbers (done) | At each switched-on threshold: positive predictive value and alerts per 1,000 ECGs, next to sensitivity and FPR (WP4 for ECG). | 2 hours |
-| 7 | Figures | (a) unsafe rate per transfer by policy; (b) CAB decisions by budget; (c) labels needed vs prevalence; (d) primary vs cohort judge. | 1 day |
+| 7 | Figures (done) | (a) unsafe rate per transfer by policy; (b) CAB decisions by budget; (c) labels needed vs prevalence; (d) primary vs cohort judge. | 1 day |
 | 8 | Results write-up | ECG methods and results in journal form (new text, not from the chapter), with a list of what was pre-specified and what was added later: budgets 8,000 and 16,000, the cohort judge, the judging-rule fix. | 1-2 days |
 
 Order: 1 first, because a label change reruns everything after it. Then 2-4 (compute, can
