@@ -2,8 +2,11 @@
 
 The PTB-XL model (ecg_e1_source.py) is imported by each target cohort. For each finding, a
 random sample of n target ECGs is labelled; every policy picks a model and threshold from it,
-and is judged on the target's unlabelled ECGs:
+and is judged on the target's ECGs:
     unsafe  = sensitivity < s* or false-positive rate > f*        (if it switched anything on)
+Primary judge: the whole cohort, less the records an ADAPT head was fitted on (columns *_cohort).
+Sensitivity analysis: the unlabelled ECGs, or a fixed evaluation set with --holdout (columns
+sens, fpr, unsafe).
 
 Criteria (notes/ecg_design.md): s* = 0.90 (0.80 secondary); f* = max(2 x home FPR, home FPR +
 0.01), with the absolute margin home FPR + 0.05 as a sensitivity analysis. The vendor's
@@ -70,6 +73,7 @@ POLICIES = ["AS-IS", "LABEL-FREE", "RECALIBRATE", "FINE-TUNE", "NAIVE-VAL", "NAI
 SECONDARY = {"ningbo": [("AF_from_AFL", "AF", "AFL")]}
 MIN_UNLABELLED_POS = 50   # judging rule (notes/ecg_design.md): expected unlabelled positives
                           # at the largest budget used for the target
+HOLDOUT = 0.0   # --holdout: share of each cohort set aside as a fixed evaluation set, never labelled
 
 
 def judged_findings(meta, budgets):
@@ -77,8 +81,8 @@ def judged_findings(meta, budgets):
     unlabelled at the largest budget that fits (budgets above half the cohort are not used)."""
     n_rec = len(meta)
     largest = max([b for b in budgets if b <= n_rec // 2], default=0)
-    return [f for f in PANEL
-            if np.nansum(meta[f].to_numpy()) * (n_rec - largest) / n_rec >= MIN_UNLABELLED_POS]
+    judged_share = HOLDOUT if HOLDOUT else (n_rec - largest) / n_rec  # holdout: positives in the evaluation set
+    return [f for f in PANEL if np.nansum(meta[f].to_numpy()) * judged_share >= MIN_UNLABELLED_POS]
 
 
 def load_scores(source, idx):
@@ -148,6 +152,9 @@ def run_target(target, idx, home, budgets, reps, out_csv):
     transfers = [(f, PANEL.index(f), f) for f in findings]
     transfers += [(name, PANEL.index(f), col) for name, f, col in SECONDARY.get(target, [])]
     print(f"{target}: {n_rec} ECGs; transfers {[t[0] for t in transfers]}", flush=True)
+    hold = np.zeros(n_rec, bool)  # fixed evaluation set: the same for every finding, budget and repeat
+    hold[np.random.default_rng(base + 1).permutation(n_rec)[: int(round(HOLDOUT * n_rec))]] = True
+    pool = np.flatnonzero(~hold)
     rows = []
     t0 = time.time()
     for n in [b for b in budgets if b <= n_rec // 2]:
@@ -155,11 +162,12 @@ def run_target(target, idx, home, budgets, reps, out_csv):
             seed = base * 10_000_000 + n * 1000 + rep
             rng = np.random.default_rng(seed)
             lab = np.zeros(n_rec, bool)
-            lab_idx = rng.choice(n_rec, size=n, replace=False)
+            lab_idx = rng.choice(pool, size=n, replace=False)
             lab[lab_idx] = True
             lab500 = np.zeros(n_rec, bool)
             lab500[lab_idx[:500]] = True
             unl = ~lab
+            ev = hold if HOLDOUT else unl  # where safety is judged
             for f, k, ycol in transfers:
                 y = np.nan_to_num(meta[ycol].to_numpy(dtype=float)).astype(bool)
                 frng = np.random.default_rng(seed + 7919 * (k + 1))
@@ -172,7 +180,7 @@ def run_target(target, idx, home, budgets, reps, out_csv):
                 Z = np.column_stack([emb, logit(p_all[:, k])])
                 p_ad = fit_adapt(Z, y, fit)
                 ada = None if p_ad is None else {"wmax": p_ad, "smax": p_ad, "septic": y}
-                n_pos_unl = int((unl & y).sum())
+                n_pos_unl = int((ev & y).sum())
                 for s_star in S_STARS:
                     h = home[(PANEL[k], s_star)]
                     tau_lf = float(np.quantile(p_all[unl, k], 1 - h["share"]))
@@ -202,7 +210,7 @@ def run_target(target, idx, home, budgets, reps, out_csv):
                             "CAB": (pick.get(remedy), tau_cab, remedy),
                         }
                         for pol, (m, tau, rem) in choices.items():
-                            on, sens, fpr, unsafe = judge(m, tau, y, unl, f_star, s_star)
+                            on, sens, fpr, unsafe = judge(m, tau, y, ev, f_star, s_star)
                             # secondary judge: the whole cohort (the population the labels were
                             # drawn from), less the records an ADAPT head was fitted on
                             cohort = ~fit if rem == "ADAPT" else np.ones(n_rec, bool)
@@ -221,6 +229,25 @@ def run_target(target, idx, home, budgets, reps, out_csv):
     return res
 
 
+# Judges (decided 2026-10-30, notes/ecg_design.md): the whole cohort, the population the labels are
+# drawn from, is primary; the sample judge (unlabelled remainder, or the fixed evaluation set with
+# --holdout) is a sensitivity analysis showing how much a judge measured on a sample adds by chance.
+PRIMARY_JUDGE = "unsafe_cohort"
+SAMPLE_JUDGE = "unsafe"
+
+
+def sample_judge_name():
+    return (f"a fixed evaluation set of {HOLDOUT:.0%} of each cohort, never labelled (budgets drawn "
+            "from the rest)" if HOLDOUT else "the unlabelled ECGs only")
+
+
+def policy_table(prim, col):
+    by_t = prim.groupby(["policy", "target", "finding"])[col].mean().rename("u").reset_index()
+    return by_t.groupby("policy").agg(transfers=("u", "size"), mean_unsafe=("u", "mean"),
+                                      worst_unsafe=("u", "max"),
+                                      transfers_over_alpha=("u", lambda u: int((u > ALPHA).sum())))
+
+
 def secondary_section(sec):
     """Report lines for the secondary transfers (primary criterion, both judges)."""
     if sec.empty:
@@ -231,14 +258,12 @@ def secondary_section(sec):
                  for t, v in SECONDARY.items() for name, f, col in v) + ".", ""]
     prim = sec[(sec.s_star == PRIMARY[0]) & (sec.margin == PRIMARY[1])]
     for (t, f), g in prim.groupby(["target", "finding"]):
-        tab = g.pivot_table(index="policy", columns="n_labelled", values="unsafe", aggfunc="mean")
-        tab_c = g.pivot_table(index="policy", columns="n_labelled", values="unsafe_cohort", aggfunc="mean")
         mix = g[g.policy == "CAB"].groupby("n_labelled").remedy.value_counts(normalize=True).unstack(fill_value=0)
-        lines += [f"{t} {f}, unsafe rate by budget (primary judge):", "", "```",
-                  tab.reindex(POLICIES).round(3).to_string(), "```", "",
-                  f"{t} {f}, unsafe rate by budget (whole-cohort judge):", "", "```",
-                  tab_c.reindex(POLICIES).round(3).to_string(), "```", "",
-                  f"{t} {f}, CAB decisions by budget:", "", "```", mix.round(2).to_string(), "```", ""]
+        for col, name in [(PRIMARY_JUDGE, "whole cohort"), (SAMPLE_JUDGE, sample_judge_name())]:
+            tab = g.pivot_table(index="policy", columns="n_labelled", values=col, aggfunc="mean")
+            lines += [f"{t} {f}, unsafe rate by budget, judged on {name}:", "", "```",
+                      tab.reindex(POLICIES).round(3).to_string(), "```", ""]
+        lines += [f"{t} {f}, CAB decisions by budget:", "", "```", mix.round(2).to_string(), "```", ""]
     return lines
 
 
@@ -247,30 +272,23 @@ def summarise(res, tag):
     sec = res[res.finding.isin(secondary)]
     res = res[~res.finding.isin(secondary)]
     prim = res[(res.s_star == PRIMARY[0]) & (res.margin == PRIMARY[1])]
-    by_t = prim.groupby(["policy", "target", "finding"]).agg(unsafe=("unsafe", "mean")).reset_index()
-    over = by_t.groupby("policy").agg(transfers=("unsafe", "size"), mean_unsafe=("unsafe", "mean"),
-                                      worst_unsafe=("unsafe", "max"),
-                                      transfers_over_alpha=("unsafe", lambda u: int((u > ALPHA).sum())))
-    on = prim.groupby("policy")["activated"].mean().rename("switched_on")
-    over = over.join(on).reindex(POLICIES)
-    bud = prim.pivot_table(index="policy", columns="n_labelled", values="unsafe", aggfunc="mean").reindex(POLICIES)
+    over = policy_table(prim, PRIMARY_JUDGE).join(prim.groupby("policy")["activated"].mean()
+                                                  .rename("switched_on")).reindex(POLICIES)
+    bud = prim.pivot_table(index="policy", columns="n_labelled", values=PRIMARY_JUDGE,
+                           aggfunc="mean").reindex(POLICIES)
     cab = prim[prim.policy == "CAB"]
     mix = cab.groupby(["target", "finding"]).remedy.value_counts(normalize=True).unstack(fill_value=0)
     largest = cab[cab.n_labelled == cab.groupby("target").n_labelled.transform("max")]
     mix_l = largest.groupby(["target", "finding"]).remedy.value_counts(normalize=True).unstack(fill_value=0)
-    by_c = prim.groupby(["policy", "target", "finding"]).agg(unsafe=("unsafe_cohort", "mean")).reset_index()
-    over_c = by_c.groupby("policy").agg(mean_unsafe=("unsafe", "mean"), worst_unsafe=("unsafe", "max"),
-                                        transfers_over_alpha=("unsafe", lambda u: int((u > ALPHA).sum())))
-    over_c = over_c.reindex(POLICIES)
-    bud_c = prim.pivot_table(index="policy", columns="n_labelled", values="unsafe_cohort",
+    over_s = policy_table(prim, SAMPLE_JUDGE).reindex(POLICIES)
+    bud_s = prim.pivot_table(index="policy", columns="n_labelled", values=SAMPLE_JUDGE,
                              aggfunc="mean").reindex(POLICIES)
-    cell = prim[prim.policy == "CAB"].groupby(["target", "finding", "n_labelled"])
-    cells_over = pd.DataFrame({"unsafe_remainder": cell.unsafe.mean(),
-                               "unsafe_cohort": cell.unsafe_cohort.mean()})
+    cell = cab.groupby(["target", "finding", "n_labelled"])
+    cells_over = pd.DataFrame({"whole_cohort": cell[PRIMARY_JUDGE].mean(), "sample": cell[SAMPLE_JUDGE].mean()})
     cells_over = cells_over[(cells_over > ALPHA).any(axis=1)]
     sens_rows = []
     for (s_star, m), g in res.groupby(["s_star", "margin"]):
-        t = g.groupby(["policy", "target", "finding"]).unsafe.mean().groupby("policy").agg(["mean", "max"])
+        t = g.groupby(["policy", "target", "finding"])[PRIMARY_JUDGE].mean().groupby("policy").agg(["mean", "max"])
         for pol in POLICIES:
             if pol in t.index:
                 sens_rows.append({"s_star": s_star, "margin": m, "policy": pol,
@@ -279,21 +297,21 @@ def summarise(res, tag):
                                                values=["mean_unsafe", "worst_unsafe"]).reindex(POLICIES)
     lines = [f"# {tag} (ECG): certified Calibrate / Adapt / Block across imported sites", "",
              f"Primary criterion: s* = {PRIMARY[0]}, relative false-positive margin; alpha = {ALPHA}. "
-             f"Targets: {', '.join(sorted(res.target.unique()))}. "
-             f"Unsafe = switched on and failing a criterion on the unlabelled ECGs.", "",
+             f"Targets: {', '.join(sorted(res.target.unique()))}. Unsafe = switched on and failing a "
+             "criterion on the whole cohort (less the records an ADAPT head was fitted on), the population "
+             "the labelled ECGs are drawn from.", "",
              "Per policy, over transfers (target x finding) and budgets:", "",
              "```", over.round(3).to_string(), "```", "",
              "Unsafe rate by label budget:", "", "```", bud.round(3).to_string(), "```", "",
              "CAB decisions at each target's largest budget:", "", "```", mix_l.round(2).to_string(), "```", "",
              "CAB decisions, all budgets:", "", "```", mix.round(2).to_string(), "```", "",
              "Sensitivity analysis (s* and margin):", "", "```", sens.round(3).to_string(), "```", "",
-             "## Secondary judge: whole cohort", "",
-             "Unsafe judged on all of the target's ECGs (the population the labels were drawn from), "
-             "less the records an ADAPT head was fitted on. The primary judge uses only the unlabelled "
-             "remainder, which at large budgets is small and negatively correlated with the labelled "
-             "records, so it flags borderline thresholds by chance.", "",
-             "Per policy, over transfers and budgets:", "", "```", over_c.round(3).to_string(), "```", "",
-             "Unsafe rate by label budget:", "", "```", bud_c.round(3).to_string(), "```", "",
+             f"## Sensitivity analysis: judged on {sample_judge_name()}", "",
+             "A judge measured on a sample has its own sampling error, so it counts some thresholds that "
+             "meet the criteria on the cohort as unsafe; at large budgets CAB's thresholds sit close to s*, "
+             "where this happens most.", "",
+             "Per policy, over transfers and budgets:", "", "```", over_s.round(3).to_string(), "```", "",
+             "Unsafe rate by label budget:", "", "```", bud_s.round(3).to_string(), "```", "",
              "CAB at a single transfer and budget above alpha under either judge:", "", "```",
              cells_over.round(3).to_string() if len(cells_over) else "(none)", "```", ""]
     lines += secondary_section(sec)
@@ -308,10 +326,13 @@ def main():
     ap.add_argument("--budgets", default="250,500,1000,2000,4000,8000,16000")
     ap.add_argument("--tag", default="E3")
     ap.add_argument("--scores", default="scores", help="folder under outputs/ecg, e.g. scores_seed1")
+    ap.add_argument("--holdout", type=float, default=0.0,
+                    help="share of each cohort kept as a fixed evaluation set (e.g. 0.3); 0 = judge on the unlabelled rest")
     ap.add_argument("--summary-only", action="store_true")
     a = ap.parse_args()
-    global SCORES
+    global SCORES, HOLDOUT
     SCORES = OUT / a.scores
+    HOLDOUT = a.holdout
     idx = pd.read_csv(INDEX_CSV, low_memory=False).set_index("record_id")
     home = home_operating_points(idx)
     budgets = [int(b) for b in a.budgets.split(",")]

@@ -224,3 +224,36 @@ CAB switches on, per transfer and budget; F3 labels needed against prevalence wi
   0.1 (CAB) to 0.3 (NAIVE-VAL) percentage points on average. Small, but it should be stated.
   A cleaner judge for the journal: hold out a fixed evaluation set that is never available for
   labelling, and draw the budgets from the rest.
+
+## Fixed evaluation set (E3H, 2026-10-30)
+
+`ecg_e3_cab.py --holdout 0.3`: 30% of each cohort fixed as an evaluation set, never labelled;
+budgets drawn from the other 70%. 28 transfers (CPSC-Extra AF, IAVB, RBBB drop: fewer than 50
+positives in the set). Reports `E3H*_report.md`.
+
+- Result, three seeds: CAB mean unsafe 0.6%, 1.2%, 1.3%; 1-3 transfers above alpha; cells above
+  alpha 4, 6, 8 of 150. Worst: Ningbo LBBB at 16,000 labels, unsafe in 46%, 97% and 98% of runs.
+  Comparators keep their order (NAIVE-VAL 32-41%, CRC 14-20%).
+- Cause: the evaluation set holds only 63 LBBB positives, and they happen to be harder than the
+  cohort's. The vendor threshold detects 0.857 of them against 0.915 of the cohort, and CAB's
+  recalibrated thresholds 0.889 against 0.94. Because the set is fixed, this one unlucky draw
+  fails nearly every run. At large budgets CAB certifies thresholds close to s*, so any judge
+  measured on a sample flags many of them by chance. Even Ningbo SB, with 3,820 positives in the
+  set, was flagged in 41% of runs at 16,000 labels (seed 1). In every flagged cell, almost all
+  failures are on sensitivity (89-98%).
+- On the whole cohort, the same runs give CAB 0.15-0.17% mean unsafe and no cell above alpha,
+  for all three seeds.
+- Conclusion: a fixed set does not remove judge noise; it turns it into a fixed error per
+  transfer. Every judge measured on a sample counts borderline-safe thresholds as unsafe.
+  The whole cohort is the population the labels are drawn from (without replacement, for which
+  the exact binomial test is conservative), so it is the judge that matches the guarantee. Its
+  one weakness is ADAPT, whose head is fitted on part of that cohort (0.1-0.3 point optimism;
+  ADAPT is 2% of CAB runs).
+- Decided 2026-10-30: the whole cohort (less the records an ADAPT head was fitted on) is the
+  primary judge, because it measures the quantity the guarantee is about. The unlabelled
+  remainder and the fixed 30% set are sensitivity analyses. This changes the analysis plan, which
+  named the remainder; the paper states the change and why, and reports all three in full.
+  Reports (`*_report.md`), E5 ward numbers and figures F1 and F4 now use the whole-cohort judge.
+- Under it, CAB has no cell (transfer x budget) above alpha in any of the three seeds: the
+  highest is 2%, and 4% in the fixed-set design. Mean unsafe 0.1%, worst transfer 0.8-0.9%.
+  Comparators: local validation 33-37%, CRC 14-16%, as supplied 94-97%.

@@ -3,7 +3,7 @@
     F1  unsafe rate per transfer, by policy (seed 0; seeds 1-2 as the spread of the mean)
     F2  CAB: share of runs switched on, per transfer and label budget
     F3  labels needed against prevalence, with the 42-positive floor
-    F4  primary (unlabelled remainder) vs secondary (whole cohort) judge, per transfer and budget
+    F4  whole-cohort judge (primary) vs the unlabelled ECGs only, per transfer and budget
 
 Run from the repository root after ecg_e3_cab.py and ecg_e5_labels.py:
     python q1_journal_plan/code/ecg_figures.py
@@ -47,8 +47,8 @@ def runs(tag):
     return r[(r.s_star == E.PRIMARY[0]) & (r.margin == E.PRIMARY[1]) & (r.finding != "AF_from_AFL")]
 
 
-def per_transfer(r, col="unsafe"):
-    return r.groupby(["policy", "target", "finding"])[col].mean().reset_index()
+def per_transfer(r, col="unsafe_cohort"):  # primary judge: the whole cohort
+    return r.groupby(["policy", "target", "finding"])[col].mean().rename("unsafe").reset_index()
 
 
 def save(fig, name):
@@ -80,7 +80,7 @@ def f1_unsafe(all_runs):
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.6, len(POLICIES) - 0.3)
     ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
-    ax.set_xlabel("Share of runs that switched on an unsafe finding (per transfer, all budgets)")
+    ax.set_xlabel("Share of runs that switched on an unsafe finding (whole cohort; per transfer, all budgets)")
     ax.grid(axis="y", visible=False)
     ax.legend(handles=[Line2D([], [], color=INK, lw=1.6, marker="|", markersize=9, linestyle="-",
                               label="mean (seed 0); line: range over three seeds")],
@@ -184,6 +184,7 @@ def f4_judges(r0):
     fig, axes = plt.subplots(1, 3, figsize=(FULL_W, 60 * MM), sharex=True, sharey=True)
     for ax, pol in zip(axes, ["CAB", "CRC", "NAIVE-VAL"]):
         g = r0[r0.policy == pol].groupby(["target", "finding", "n_labelled"])[["unsafe", "unsafe_cohort"]].mean()
+        # x: the unlabelled ECGs only (sensitivity analysis); y: the whole cohort (primary)
         ax.plot([0, 1], [0, 1], color=GRID, lw=1, zorder=1)
         ax.axvline(E.ALPHA, color=INK2, lw=0.7, ls=(0, (3, 2)))
         ax.axhline(E.ALPHA, color=INK2, lw=0.7, ls=(0, (3, 2)))
@@ -202,9 +203,9 @@ def f4_judges(r0):
             a.set_major_locator(matplotlib.ticker.FixedLocator([0, 0.05, 0.2, 1]))
             a.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
             a.set_minor_locator(matplotlib.ticker.NullLocator())
-    axes[0].set_ylabel("Unsafe, judged on whole cohort")
-    axes[1].set_xlabel("Unsafe, judged on the unlabelled ECGs (primary)")
-    fig.suptitle("The two safety judges agree except near the 5% line", x=0.01, ha="left",
+    axes[0].set_ylabel("Unsafe, judged on the whole cohort (primary)")
+    axes[1].set_xlabel("Unsafe, judged on the unlabelled ECGs only")
+    fig.suptitle("Judging on the unlabelled ECGs adds chance failures near the 5% line", x=0.01, ha="left",
                  fontsize=8.5, weight="bold", color=INK, y=1.03)
     save(fig, "F4_judges")
 

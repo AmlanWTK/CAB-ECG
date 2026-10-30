@@ -1,6 +1,6 @@
-# ECG domain: methods and results (draft 1)
+# ECG domain: methods and results (draft 2)
 
-Draft for the journal paper, 2026-10-29. New text, not taken from the book chapter. Numbers
+Draft for the journal paper, 2026-10-30 (draft 2: whole-cohort judge primary). New text, not taken from the book chapter. Numbers
 come from `outputs/ecg/` (seed 0 unless stated; seeds 1 and 2 as ranges). Figures are
 `outputs/ecg/figures/F1-F4`. References marked [to verify] must be checked before submission.
 
@@ -131,10 +131,19 @@ used at a cohort only if it was at most half the cohort, so 8,000 was used at Ni
 CODE-15% and 16,000 at Ningbo only. Each transfer and budget was repeated 100 times with fixed
 seeds, giving 15,900 runs per policy and seed.
 
-The primary judge measured sensitivity and FPR on the cohort's unlabelled ECGs. A secondary
-judge used the whole cohort, except the ECGs used to fit an adapted head. A policy's unsafe rate
-is the share of runs in which it switched on a finding that failed a criterion. We report its
-mean over transfers, the worst transfer, and the number of transfers above alpha.
+Safety was judged on the whole cohort. The cohort is the population the hospital's labelled
+ECGs are drawn from, so its sensitivity and FPR at a threshold are the quantities CAB's guarantee
+is about. For sampling without replacement from a finite cohort, the exact binomial tests are
+conservative. For an adapted head, the ECGs it was fitted on were left out of the judge. A
+policy's unsafe rate is the share of runs in which it switched on a finding that failed a
+criterion on the cohort. We report its mean over transfers, the worst transfer, and the number
+of transfers above alpha.
+
+Two judges measured on a sample served as sensitivity analyses: the cohort's unlabelled ECGs,
+and a fixed evaluation set of 30% of each cohort that was never available for labelling (with
+budgets drawn from the remaining 70%). Any judge measured on a sample has sampling error of its
+own, so it counts some thresholds that meet the criteria on the cohort as failures. These
+analyses show how large that effect is.
 
 For every transfer we also computed the following.
 
@@ -157,8 +166,11 @@ The following were added or changed after the first gate results were seen. All 
 
 - **Budgets.** The 8,000 and 16,000 budgets were added to test whether rare findings were
   blocked for lack of labels.
-- **Second judge.** The whole-cohort judge was added after the large budgets showed noise in
-  the primary judge.
+- **Judge.** The analysis plan named the unlabelled ECGs as the judge. At large budgets that
+  judge flagged thresholds that met the criteria on the cohort, so we added the whole-cohort
+  judge and then a fixed evaluation set. The fixed set flagged even more of them (below). We
+  made the whole cohort the primary judge because it measures the quantity the guarantee is
+  about. Both sample judges are reported in full.
 - **Judging rule.** The code had first selected findings with at least 20 positives in total,
   instead of the rule written above. It was corrected, which removed two transfers that CAB had
   blocked in every run.
@@ -189,54 +201,55 @@ Table E3. AUROC of the imported model (seed 0).
 | CODE-15% | 0.890 | 0.810 | 0.933 | 0.904 | 0.806 | 0.889 |
 
 Good ranking did not keep the vendor's threshold safe. Used as supplied, the model failed a
-criterion in 94% of runs, and in 30 of the 31 transfers more often than alpha.
+criterion on the cohort in 94% of runs, and in 29 of the 31 transfers more often than alpha.
 
 ### CAB kept unsafe activation below alpha in every transfer
 
 Table E4 and Figure F1 give the unsafe rate of every policy. CAB switched on an unsafe finding
-in 0.4% of runs on average (worst transfer 2.2%), and in no transfer more often than alpha.
+in 0.1% of runs on average (worst transfer 0.8%), and in no transfer, at any budget, more often
+than alpha.
 
 The other approaches fared as follows:
 
-- **Local validation by point estimate** was unsafe in 33% of runs (worst 70%), with 26
+- **Local validation by point estimate** was unsafe in 33% of runs (worst 69%), with 25
   transfers above alpha.
-- **The 500-ECG variant** was unsafe in 28% of runs (worst 63%).
+- **The 500-ECG variant** was unsafe in 27% of runs (worst 62%).
 - **Recalibration and fine-tuning** were unsafe in 86% and 85% of runs.
-- **CRC** was unsafe in 16% of runs (worst 44%), with 17 transfers above alpha.
+- **CRC** was unsafe in 15% of runs (worst 44%), with 17 transfers above alpha.
 
-Table E4. Unsafe activation by policy: 31 transfers, all budgets, primary criterion and
-judge. Seed 0, with the range over three seeds in brackets.
+Table E4. Unsafe activation by policy: 31 transfers, all budgets, primary criterion, judged
+on the whole cohort. Seed 0, with the range over three seeds in brackets.
 
 | Policy | Mean unsafe | Worst transfer | Transfers above alpha | Runs switched on |
 |---|---|---|---|---|
-| As supplied | 93.7% (93.5-96.9) | 100% | 30 | 100% |
-| Label-free reset | 100% | 100% | 31 (30-31) | 100% |
-| Recalibrate | 86.3% (86.0-87.0) | 100% | 31 | 99.8% |
-| Fine-tune | 84.8% (83.8-85.1) | 100% | 31 | 98.5% |
-| Local validation | 33.4% (33.4-37.3) | 70.0% (69.6-71.5) | 26 (26-28) | 52.7% |
-| Local validation, first 500 | 27.6% (27.6-31.3) | 62.6% (59.0-62.6) | 22 (22-25) | 42.3% |
-| Conformal risk control | 16.1% (14.8-16.5) | 44.4% (44.4-48.0) | 17 (17-19) | 31.9% |
-| Learn-then-Test, no order | 0.3% | 1.6% | 0 | 12.7% |
-| CAB without adapt | 0.3% | 2.0% | 0 | 12.3% |
-| CAB | 0.4% (0.3-0.4) | 2.2% (1.9-2.2) | 0 | 14.4% |
+| As supplied | 93.5% (93.5-96.8) | 100% | 29 (29-30) | 100% |
+| Label-free reset | 100% (93.7-100) | 100% | 31 (30-31) | 100% |
+| Recalibrate | 86.0% (85.6-86.6) | 100% | 31 | 99.8% |
+| Fine-tune | 84.6% (83.5-84.9) | 100% | 31 | 98.5% |
+| Local validation | 32.8% (32.8-36.6) | 69.0% (65.0-69.8) | 25 (25-27) | 52.7% |
+| Local validation, first 500 | 27.2% (27.2-31.0) | 61.7% (59.2-61.7) | 22 (22-24) | 42.3% |
+| Conformal risk control | 15.1% (13.8-15.7) | 43.8% (43.8-47.2) | 17 (17-19) | 31.9% |
+| Learn-then-Test, no order | 0.1% | 0.6% (0.6-0.9) | 0 | 12.7% |
+| CAB without adapt | 0.1% | 0.8% (0.8-0.9) | 0 | 12.3% |
+| CAB | 0.1% | 0.8% (0.8-0.9) | 0 | 14.4% |
 
 CRC failed for a reason its guarantee predicts. It controls the expected miss rate, so a
 threshold that meets s* on average across labelled samples still falls short in about half of
-them. In runs where CRC switched a finding on, 54% were unsafe, nearly all on sensitivity (51%)
-rather than FPR (5%). Larger budgets made this worse: CRC was unsafe in 10% of runs at 250
-labels and 47% at 16,000, because it switched on more often while still missing s* about half
+them. In runs where CRC switched a finding on, 51% were unsafe, nearly all on sensitivity (48%)
+rather than FPR (4%). Larger budgets made this worse: CRC was unsafe in 10% of runs at 250
+labels and 42% at 16,000, because it switched on more often while still missing s* about half
 the time.
 
-The result held at every site. CAB's mean unsafe rate per cohort ranged from 0.0% (CODE-15%,
-CPSC-Extra) to 1.1% (Ningbo), while local validation ranged from 12% (CODE-15%) to 48%
-(Ningbo).
+The result held at every site. CAB's mean unsafe rate per cohort was at most 0.2%, while local
+validation's ranged from 12% (CODE-15%) to 46% (Ningbo).
 
 ### What CAB switched on, and why it blocked the rest
 
 CAB switched a finding on in 14.4% of runs: CALIBRATE in 12.0%, ADAPT in 2.1% and KEEP in
 0.3% (Figure F2). Sinus bradycardia was switched on in 97-100% of runs from 250 labels at
-Chapman and Ningbo, and in at least 91% from 500 labels at Georgia. At Ningbo, IAVB, RBBB, LBBB and STach were blocked at 4,000 labels in
-90% or more of runs. At 16,000 labels they were switched on in 61%, 95%, 49% and 97% of runs.
+Chapman and Ningbo, and in at least 91% from 500 labels at Georgia. At Ningbo, IAVB, RBBB,
+LBBB and STach were blocked at 4,000 labels in 90% or more of runs. At 16,000 labels they were
+switched on in 61%, 95%, 49% and 97% of runs.
 
 The oracle check sorts the 31 transfers into three groups (seed 0; seeds 1 and 2 in brackets).
 
@@ -257,15 +270,15 @@ borderline, and none moved from switched on to no safe remedy.
 
 ### What a switched-on finding means on the ward
 
-In runs where CAB switched a finding on, median sensitivity on the unlabelled ECGs was
-0.91-0.94 throughout. PPV depended on prevalence and on how much FPR the criterion allowed:
+In runs where CAB switched a finding on, median sensitivity on the cohort was 0.92-0.95
+throughout. PPV depended on prevalence and on how much FPR the criterion allowed:
 
 | Finding (site) | PPV |
 |---|---|
 | SB (Chapman, Ningbo) | 0.90-0.95 |
-| STach (Chapman, Ningbo) | 0.92-0.93 |
+| STach (Chapman, Ningbo) | 0.93 |
 | RBBB (Ningbo) | 0.79 |
-| LBBB (Ningbo) | 0.52 |
+| LBBB (Ningbo) | 0.53 |
 | IAVB | 0.16-0.56 |
 
 Alerts ranged from 13 to 374 per 1,000 ECGs. The criteria are defined against home
@@ -273,32 +286,37 @@ performance, so a finding can pass them and still produce mostly false alerts wh
 
 ### Robustness
 
-**Seeds.** Across the three seeds, CAB's mean unsafe rate was 0.3-0.4% and its worst transfer
-1.9-2.2%, with no transfer above alpha. All comparators kept their order (Table E4).
+**Seeds.** Across the three seeds, CAB's mean unsafe rate was 0.1% and its worst transfer
+0.8-0.9%, with no transfer above alpha. All comparators kept their order (Table E4).
 
 **Criteria.** Under the other three combinations of s* and FPR limit, CAB's mean unsafe rate was
-0.4-0.6% (worst transfer 2.0-2.4%). Local validation's was 37-42% and CRC's 21-29%.
+0.1-0.2% (worst transfer 0.8-1.0%). Local validation's was 36-42% and CRC's 20-28%.
 
-**Judges.** On the whole cohort, CAB's mean unsafe rate was 0.1% (worst 0.8%) and CRC's 15%.
+**Judges measured on a sample.** Judged on the unlabelled ECGs only, CAB's mean unsafe rate was
+0.4% (worst transfer 2.2%), and three single cells (one transfer at one budget) exceeded alpha:
 
-Three single cells, each one transfer at one budget, exceeded alpha for CAB under the primary
-judge:
-
-| Transfer | Budget | Primary judge | Whole cohort |
+| Transfer | Budget | Unlabelled ECGs | Whole cohort |
 |---|---|---|---|
 | Georgia IAVB | 4,000 | 0.07 | 0.01 |
 | Ningbo LBBB | 16,000 | 0.07 | 0.00 |
 | Ningbo STach | 16,000 | 0.06 | 0.00 |
 
-All failures in these cells were near the limits: sensitivity 0.88-0.90 against 0.90, or FPR at
-most 0.008 above f*. At large budgets the unlabelled remainder is small (about 130 LBBB positives at
-Ningbo at 16,000 labels). Because the labelled and unlabelled ECGs together make up a fixed
-cohort, the remainder also tends to look worse when the labelled sample looked better.
+Judged on the fixed 30% evaluation set (28 transfers; CPSC-Extra AF, IAVB and RBBB have fewer
+than 50 positives in it), CAB's mean unsafe rate was 0.6-1.3% over the three seeds. Four to
+eight of 150 cells exceeded alpha, among them Ningbo LBBB at 16,000 labels, at 46-98%. The
+evaluation set holds 63 LBBB positives, and they happen to be harder than the cohort's: the
+vendor threshold detects 86% of them against 92% of the cohort, and CAB's recalibrated
+thresholds 89% against 94%. Because the set is fixed, this one draw fails nearly every run. On
+the whole cohort the same runs gave no cell above alpha.
 
-The whole-cohort judge errs the other way, because it includes the ECGs a threshold was set
-on: in switched-on runs its sensitivity was 0.1-0.3 percentage points higher than the
-remainder's (Figure F4). The two judges therefore bracket performance on new patients. A fixed
-evaluation set that is never available for labelling would remove both biases.
+The excess has one cause. At large budgets CAB certifies thresholds just above s*, and a judge
+measured on a sample then puts many of them below s* by chance. This happens when the remainder
+is small and moves against the labelled sample, as here, or when a fixed set is unrepresentative.
+Nearly all failures in the flagged cells were on sensitivity, close to the limit. The
+comparators' unsafe rates changed little between judges (Figure F4). The whole-cohort judge has
+one weakness: an adapted head is judged on records near those it was fitted on. In
+switched-on runs its sensitivity was 0.1-0.3 percentage points above the remainder's, and
+ADAPT made up 2% of CAB's runs.
 
 ### Secondary transfer: Ningbo AF
 
@@ -307,14 +325,15 @@ correct: even the oracle threshold for s* gives FPR 0.043 against f* = 0.018, an
 head 0.021. The false positives were mostly sinus tachycardia, premature atrial contractions
 and atrial tachycardia. Local validation switched AF on anyway and was unsafe in 13-36% of
 runs, depending on the budget. Under the absolute FPR limit, CAB switched it on in 41% of runs,
-with 1.6% unsafe.
+with 0.6% unsafe.
 
 ---
 
 ## Figure captions
 
 **F1.** Unsafe activation per transfer, by policy. Each point is one of 31 transfers (finding
-at target cohort), pooled over label budgets; primary criterion and judge, seed 0. The vertical
+at target cohort), pooled over label budgets; primary criterion, judged on the whole cohort,
+seed 0. The vertical
 tick marks the mean and the horizontal line its range over three training seeds. The dashed
 line is alpha = 5%.
 
@@ -326,8 +345,9 @@ the finding on in at least half of runs, or else the largest budget tried, by ou
 show the least number of labels at which certification is possible: 42 positives for CALIBRATE
 and 84 for ADAPT.
 
-**F4.** Unsafe rate per transfer and budget judged on the unlabelled ECGs (x) and on the whole
-cohort (y), for CAB, CRC and local validation. Axes are linear below 5% and logarithmic above.
+**F4.** Unsafe rate per transfer and budget, judged on the unlabelled ECGs only (x) and on the
+whole cohort (y, primary), for CAB, CRC and local validation. Axes are linear below 5% and
+logarithmic above.
 
 ## References to verify
 

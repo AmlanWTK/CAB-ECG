@@ -7,7 +7,7 @@ Reads the E3 runs (ecg_e3_cab.py) and, per transfer (target x finding), under th
   - the label floor: positives the exact binomial test needs at delta = alpha/4 even with no
     misses, divided by prevalence (CALIBRATE uses all labels, ADAPT certifies on half of them)
   - the smallest budget at which CAB switches the finding on in at least half of the runs
-  - on the unlabelled ECGs of switched-on runs: median sensitivity, FPR, positive predictive
+  - on the whole cohort (the primary judge) in switched-on runs: median sensitivity, FPR, positive predictive
     value and alerts per 1,000 ECGs, next to the vendor's home values (PTB-XL fold 10)
 
 Run from the repository root after E3:
@@ -85,7 +85,7 @@ def main():
             on = g.groupby("n_labelled").activated.mean()
             reached = on[on >= 0.5]
             act = g[g.activated]
-            ppv, alerts = zip(*[ward(r.sens, r.fpr, r.n_pos_unlabelled / (n_rec - r.n_labelled))
+            ppv, alerts = zip(*[ward(r.sens_cohort, r.fpr_cohort, prev)
                                 for r in act.itertuples()]) if len(act) else ([np.nan], [np.nan])
             y_h = m_h[pf].to_numpy()[te].astype(bool)
             home_ppv, home_alerts = ward(1.0 * (p_h[te][y_h, k] >= h["tau"]).mean(), h["fpr"], y_h.mean())
@@ -98,8 +98,8 @@ def main():
                 "largest_budget": int(on.index.max()), "on_at_largest": float(on.iloc[-1]),
                 "budget_half_on": int(reached.index.min()) if len(reached) else np.nan,
                 "runs_on": len(act),
-                "sens": float(act.sens.median()) if len(act) else np.nan,
-                "fpr": float(act.fpr.median()) if len(act) else np.nan,
+                "sens": float(act.sens_cohort.median()) if len(act) else np.nan,
+                "fpr": float(act.fpr_cohort.median()) if len(act) else np.nan,
                 "ppv": float(np.median(ppv)), "alerts_per_1000": float(np.median(alerts)),
                 "home_ppv": home_ppv, "home_alerts_per_1000": home_alerts,
             })
@@ -128,7 +128,7 @@ def main():
              "Outcome per transfer:", "", "```", show.round(3).to_string(index=False), "```", "",
              "Outcomes: " + ", ".join(f"{k} {v}" for k, v in res[~res.secondary].outcome.value_counts().items())
              + " (primary transfers).", "",
-             "Switched-on runs, medians on the unlabelled ECGs (all budgets):", "", "```",
+             "Switched-on runs, medians on the whole cohort (all budgets):", "", "```",
              ward_t.round(3).to_string(index=False), "```", ""]
     (E.OUT / f"{a.tag}_E5_labels.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
