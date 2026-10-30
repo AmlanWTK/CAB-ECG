@@ -26,8 +26,9 @@ Choices (documented in notes/sepsis_labels.md):
 Run from the repository root:
     python q1_journal_plan/code/mimiciv_sepsis.py [--definition relaxed|challenge]
         [--root data/mimiciv_demo/mimic-iv-clinical-database-demo-2.2] [--out outputs/sepsis_q1/mimiciv_demo]
-Writes <out>_<definition>_stays.csv (one row per stay, with the cohort decision) and
-<out>_<definition>_hourly.csv.gz (one row per stay-hour, Challenge cohort only).
+Writes <out>_<definition>_stays.csv (one row per stay, with the cohort decision),
+<out>_<definition>_hourly.csv.gz (one row per stay-hour, Challenge cohort only) and
+<out>_<definition>_challenge.pkl (the same hours in the Challenge format, challenge_format.py).
 """
 
 import argparse
@@ -38,6 +39,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import challenge_format as CF  # noqa: E402
 import sepsis3 as S3  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
@@ -84,6 +86,35 @@ def to_stays(df, stays, key, time_col, lo=-24.0):
 
 def hour_of(t):
     return np.maximum(np.floor(t), 0).astype(int)
+
+
+def export_challenge(root, stays, grid, hc, out):
+    """The Challenge-format hourly table (challenge_format.py) for the Challenge cohort."""
+    ch = read(root, "icu/chartevents", ["stay_id", "charttime", "itemid", "valuenum"], chunks=True,
+              keep=list(CF.MIMIC_CHART)).rename(columns={"stay_id": "stay"}).merge(stays[["stay", "intime"]], on="stay")
+    ch["t"] = (pd.to_datetime(ch.charttime) - ch.intime).dt.total_seconds() / 3600
+    ch = ch.assign(var=ch.itemid.map(CF.MIMIC_CHART), value=ch.valuenum)
+    lab = read(root, "hosp/labevents", ["subject_id", "charttime", "itemid", "valuenum"], chunks=True,
+               keep=list(CF.MIMIC_LAB))
+    lab = to_stays(lab, stays, "subject_id", "charttime", lo=0)
+    lab = lab.assign(var=lab.itemid.map(CF.MIMIC_LAB), value=lab.valuenum)
+    w = CF.wide(pd.concat([ch[["stay", "t", "var", "value"]], lab[["stay", "t", "var", "value"]]]), grid)
+
+    icu = read(root, "icu/icustays", ["stay_id", "first_careunit"]).rename(columns={"stay_id": "stay"})
+    pts = read(root, "hosp/patients", ["subject_id", "gender", "anchor_age", "anchor_year"])
+    adm = read(root, "hosp/admissions", ["hadm_id", "admittime"])
+    demo = stays.merge(icu, on="stay").merge(pts, on="subject_id").merge(adm, on="hadm_id")
+    demo["Age"] = demo.anchor_age + (demo.intime.dt.year - demo.anchor_year)
+    demo["Gender"] = (demo.gender == "M").astype(int)
+    demo["HospAdmTime"] = (pd.to_datetime(demo.admittime) - demo.intime).dt.total_seconds() / 3600
+    demo["unit"] = demo.first_careunit.map(CF.MIMIC_UNITS).fillna("other")
+    demo["site"] = "MIMIC-IV"
+    df = CF.assemble(w, hc, demo[["stay", "site", "unit", "Age", "Gender", "HospAdmTime"]], "mimic")
+    df.to_pickle(f"{out}_challenge.pkl")
+    cov = CF.coverage(df)
+    print(f"Challenge format: {len(df)} rows, {df.pid.nunique()} stays; present in rows: "
+          + ", ".join(f"{v} {cov[v]:.0%}" for v in ["HR", "MAP", "Temp", "Resp", "Creatinine", "Lactate", "WBC"]))
+    return df
 
 
 def main():
@@ -214,6 +245,7 @@ def main():
     hc.to_csv(f"{out}_hourly.csv.gz", index=False)
 
     S3.summary(st, hc)
+    export_challenge(root, stays, grid, hc, out)
 
 if __name__ == "__main__":
     main()

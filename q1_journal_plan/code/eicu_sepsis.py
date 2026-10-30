@@ -30,8 +30,10 @@ Run from the repository root:
     python q1_journal_plan/code/eicu_sepsis.py [--definition relaxed|challenge]
         [--root data/eicu_demo/eicu-crd-demo-2.0.1] [--out outputs/sepsis_q1/eicu_demo]
 Writes <out>_<definition>_stays.csv (one row per stay, with hospital, recording check and cohort
-decision), <out>_<definition>_hospitals.csv and <out>_<definition>_hourly.csv.gz (one row per
-stay-hour, Challenge cohort only).
+decision), <out>_<definition>_hospitals.csv, <out>_<definition>_hourly.csv.gz (one row per
+stay-hour, Challenge cohort only) and <out>_<definition>_challenge.pkl (the same hours in the
+Challenge format, challenge_format.py; site = eICU hospital id; all hospitals, filter with the
+hospitals file).
 """
 
 import argparse
@@ -42,6 +44,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import challenge_format as CF  # noqa: E402
 import sepsis3 as S3  # noqa: E402
 from mimiciv_sepsis import ANTIBIOTICS, COURSE_GAP, COURSE_MIN, hour_of  # noqa: E402
 
@@ -61,6 +64,42 @@ def read(root, name, usecols, filt=None):
     for c in pd.read_csv(path, usecols=usecols, chunksize=2_000_000, low_memory=False):
         parts.append(filt(c) if filt else c)
     return pd.concat(parts, ignore_index=True)
+
+
+def export_challenge(root, stays, grid, hc, out):
+    """The Challenge-format hourly table (challenge_format.py) for the Challenge cohort."""
+    keep = set(stays.stay)
+    parts = []
+    for table, cols in [("vitalPeriodic", CF.EICU_PERIODIC), ("vitalAperiodic", CF.EICU_APERIODIC)]:
+        v = read(root, table, ["patientunitstayid", "observationoffset"] + list(cols))
+        v = v[v.patientunitstayid.isin(keep)].melt(id_vars=["patientunitstayid", "observationoffset"],
+                                                   var_name="col", value_name="value")
+        parts.append(pd.DataFrame({"stay": v.patientunitstayid, "t": v.observationoffset / 60,
+                                   "var": v.col.map(cols), "value": v.value}))
+    tc = read(root, "nurseCharting", ["patientunitstayid", "nursingchartoffset", "nursingchartcelltypevalname",
+                                      "nursingchartvalue"], lambda c: c[c.nursingchartcelltypevalname == "Temperature (C)"])
+    tv = pd.to_numeric(tc.nursingchartvalue, errors="coerce")
+    tc = tc[tv.between(25, 45)]  # temperature is mostly charted by nurses in eICU; drop impossible values
+    parts.append(pd.DataFrame({"stay": tc.patientunitstayid, "t": tc.nursingchartoffset / 60, "var": "Temp",
+                               "value": pd.to_numeric(tc.nursingchartvalue, errors="coerce")}))
+    lab = read(root, "lab", ["patientunitstayid", "labname", "labresultoffset", "labresult"],
+               lambda c: c[c.labname.isin(list(CF.EICU_LAB))])
+    parts.append(pd.DataFrame({"stay": lab.patientunitstayid, "t": lab.labresultoffset / 60,
+                               "var": lab.labname.map(CF.EICU_LAB), "value": lab.labresult}))
+    w = CF.wide(pd.concat(parts, ignore_index=True), grid)
+
+    pt = read(root, "patient", ["patientunitstayid", "hospitalid", "age", "gender", "unittype", "hospitaladmitoffset"])
+    demo = pd.DataFrame({"stay": pt.patientunitstayid, "site": pt.hospitalid.astype(str),
+                         "unit": pt.unittype.map(CF.EICU_UNITS).fillna("other"),
+                         "Age": pd.to_numeric(pt.age.replace("> 89", "90"), errors="coerce"),
+                         "Gender": np.where(pt.gender == "Male", 1, np.where(pt.gender == "Female", 0, np.nan)),
+                         "HospAdmTime": pt.hospitaladmitoffset / 60})
+    df = CF.assemble(w, hc, demo, "eicu")
+    df.to_pickle(f"{out}_challenge.pkl")
+    cov = CF.coverage(df)
+    print(f"Challenge format: {len(df)} rows, {df.pid.nunique()} stays, {df.site.nunique()} hospitals; present in rows: "
+          + ", ".join(f"{v} {cov[v]:.0%}" for v in ["HR", "MAP", "Temp", "Resp", "Creatinine", "Lactate", "WBC"]))
+    return df
 
 
 def main():
@@ -219,6 +258,7 @@ def main():
     ok = st[st.hospital_adequate]
     print(f"hospitals with adequate recording: {int(hosp.adequate.sum())} of {len(hosp)} ({len(ok)} stays)")
     S3.summary(ok, hc[hc.stay.isin(ok.index)])
+    export_challenge(root, stays, grid, hc, out)
     inc = ok[ok.excluded.isna()]
     by_h = inc.groupby("hospitalid").agg(stays=("septic", "size"), septic=("septic", "sum"))
     print(f"hospitals with >= 20 stays: {(by_h.stays >= 20).sum()}; with >= 5 septic stays: {(by_h.septic >= 5).sum()}")
