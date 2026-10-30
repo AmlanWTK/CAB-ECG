@@ -1,6 +1,7 @@
 # Analysis plan: multi-hospital sepsis transfer study (WP3, WP9)
 
-Draft 0, 2026-10-30. To be fixed and dated before any model is run on the full eICU-CRD or
+Draft 1, 2026-10-30 (draft 1: false-alert limit and recording thresholds decided; monitoring
+added). To be fixed and dated before any model is run on the full eICU-CRD or
 MIMIC-IV data. Items marked **[decide]** are open; items marked **[from counts]** may be set after
 looking at cohort sizes and septic counts per hospital, which say nothing about model performance.
 Any change after the first full run is listed in the paper as a deviation.
@@ -32,8 +33,10 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
 ## 4. Hospitals and transfers
 
 - eICU hospitals are eligible if antibiotics are recorded in at least 20% of their stays and
-  cultures in at least 10% (recording rates, not outcomes; thresholds **[decide]** before the run;
-  current values provisional).
+  cultures in at least 10% (recording rates, not outcomes; decided 2026-10-30). Stricter cuts
+  protect the labels against hospitals that record only partly. Sensitivity analysis: 10% and 5%.
+  In the demo, 85 of 186 hospitals record no cultures at all, but with a median of 12 stays per
+  hospital the demo cannot place the cut more finely.
 - A target must have enough septic stays to judge safety: at least 50 septic stays in the cohort
   (the ECG study's judging rule). **[from counts]** With about 2-3% of cohort stays septic, few
   single eICU hospitals reach this; if fewer than about 20 do, targets are hospital groups
@@ -55,8 +58,10 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
 
 - Patient-level, as in the chapter: sensitivity = share of septic patients alerted between 12 h
   before and 3 h after onset; false-alert rate = share of non-septic patients alerted at least once.
-- Primary: s* = 0.80 and f* = home false-alert rate + 0.05 (the chapter's primary). **[decide]**
-  whether to switch to the relative limit used in the ECG study, max(2 x home, home + 0.01).
+- Primary: s* = 0.80 and f* = home false-alert rate + 0.05 (the chapter's primary; decided
+  2026-10-30). The ECG study's relative limit, max(2 x home, home + 0.01), is not used: with the
+  chapter's home false-alert rates of 0.29-0.48 it would allow 0.6-1.0. ECG keeps the relative
+  limit because its home FPRs are 1-3%.
 - Secondary: s* in {0.75, 0.85}; margins {0, 0.10}.
 
 ## 7. Policies
@@ -87,13 +92,29 @@ control (as in the ECG study).
 Labels under the Challenge rule (MIMIC-IV); the other criteria; judge on unlabelled patients; a
 second training seed; eICU hospitals that fail the recording check, reported separately.
 
-## 11. Reporting
+## 11. Monitoring after deployment (WP8; `notes/wp8_design.md`)
+
+- Monitor: two betting tests on audited stays (missed septic stays; false alerts in non-septic
+  stays), each at delta/2 = 0.025, with sliding-window aGRAPA bets (window 100, c = 0.5); the
+  probability of any false alarm while the deployment is safe is at most 0.05 (Ville).
+- Comparators: point-estimate checks and uncorrected binomial tests every 250 audited stays.
+- Test: MIMIC-IV temporal split (deployment certified on earlier anchor-year groups, audits from
+  later groups) and eICU transfers (deployment at one hospital or group, audits from another).
+- Outcomes: false alarms in runs where the deployment stays safe; detection and audits to
+  alarm where it becomes unsafe, by size of the drift.
+- **[decide]** whether sensitivity audits are enriched for septic stays, and whether the guarantee
+  is the probability of any false alarm or the average time to one, once the ECG comparison of
+  the two is done.
+
+## 12. Reporting
 
 TRIPOD+AI checklist; code and this plan released with the paper; every deviation listed.
 
 ## To decide before the full run
 
-1. Recording thresholds for eICU hospitals (now 20% antibiotics, 10% cultures).
-2. Targets: single hospitals or groups, once septic counts per hospital are known.
-3. False-alert limit: the chapter's absolute +0.05 or the ECG study's relative limit.
-4. Label budgets, once target sizes are known.
+1. Targets: single hospitals or groups, once septic counts per hospital are known.
+2. Label budgets, once target sizes are known.
+3. Monitoring: enriched sensitivity audits; type of false-alarm guarantee (section 11).
+
+Decided 2026-10-30: recording thresholds 20% / 10% (section 4); false-alert limit home + 0.05
+(section 6).

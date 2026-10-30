@@ -2,7 +2,8 @@
 
 Draft for the journal paper, 2026-10-30 (draft 2: whole-cohort judge primary). New text, not taken from the book chapter. Numbers
 come from `outputs/ecg/` (seed 0 unless stated; seeds 1 and 2 as ranges). Figures are
-`outputs/ecg/figures/F1-F4`. References marked [to verify] must be checked before submission.
+`outputs/ecg/figures/F1-F4`. References [E1]-[E9] checked against the dataset pages and DOIs on
+2026-10-30.
 
 ---
 
@@ -11,12 +12,9 @@ come from `outputs/ecg/` (seed 0 unless stated; seeds 1 and 2 as ranges). Figure
 ### Cohorts
 
 We imported an electrocardiogram (ECG) classifier trained in one country into six cohorts from
-three other countries (Table E1). The source was PTB-XL v1.0.3 (Germany) [to verify: Wagner et
-al., Sci Data 2020]. The targets were the Georgia, CPSC 2018 and CPSC-Extra sets of the
-PhysioNet/CinC Challenge 2021 v1.0.3 (USA and China) [to verify: Reyna et al., CinC 2021]; the
-Chapman-Shaoxing and Ningbo parts of the ecg-arrhythmia database v1.0.0 (China) [to verify:
-Zheng et al., PhysioNet 2022]; and part 0 of CODE-15% (Brazil) [to verify: Ribeiro et al., Nat
-Commun 2020]. All are openly licensed (CC BY 4.0).
+three other countries (Table E1). The source was PTB-XL v1.0.3 (Germany) [E1, E2]. The targets were the Georgia, CPSC 2018 and CPSC-Extra sets of the
+PhysioNet/CinC Challenge 2021 v1.0.3 (USA and China) [E3, E4]; the
+Chapman-Shaoxing and Ningbo parts of the ecg-arrhythmia database v1.0.0 (China) [E5, E6]; and part 0 of CODE-15% (Brazil) [E7, E8]. All are openly licensed (CC BY 4.0).
 
 Table E1. Cohorts and findings judged.
 
@@ -119,7 +117,7 @@ We compared CAB with nine alternatives, all given the same labelled ECGs:
 - local validation on the first 500 labelled ECGs only;
 - Learn-then-Test over both models without CAB's order;
 - CAB without the adapt stage;
-- conformal risk control (CRC) [to verify: Angelopoulos et al., ICLR 2024]. On the imported
+- conformal risk control (CRC) [E9]. On the imported
   model, CRC takes the highest threshold whose bound on the miss rate is at most 1 - s*, and
   switches the finding on only if its bound on the FPR is at most f*. CRC controls both rates in
   expectation over the labelled sample. CAB controls them with high probability.
@@ -349,12 +347,33 @@ and 84 for ADAPT.
 whole cohort (y, primary), for CAB, CRC and local validation. Axes are linear below 5% and
 logarithmic above.
 
-## References to verify
+## References
 
-- PTB-XL: Wagner P, Strodthoff N, Bousseljot RD, et al. Sci Data 2020.
-- PhysioNet/CinC Challenge 2021: Reyna MA, Sadr N, Perez Alday EA, et al. Computing in
-  Cardiology 2021.
-- ecg-arrhythmia: Zheng J, et al. PhysioNet, v1.0.0, 2022.
-- CODE-15%: Ribeiro AH, Ribeiro MH, Paixão GMM, et al. Nat Commun 2020; dataset on Zenodo,
-  record 4916206.
-- Conformal risk control: Angelopoulos AN, Bates S, Fisch A, Lei L, Schuster T. ICLR 2024.
+- [E1] Wagner P, Strodthoff N, Bousseljot RD, Kreiseler D, Lunze FI, Samek W, Schaeffter T.
+  PTB-XL, a large publicly available electrocardiography dataset. Sci Data. 2020;7:154.
+  doi:10.1038/s41597-020-0495-6
+- [E2] Wagner P, Strodthoff N, Bousseljot R, Samek W, Schaeffter T. PTB-XL, a large publicly
+  available electrocardiography dataset (version 1.0.3). PhysioNet. 2022.
+  doi:10.13026/kfzx-aw45
+- [E3] Reyna MA, Sadr N, Perez Alday EA, Gu A, Shah AJ, Robichaux C, et al. Will two do? Varying
+  dimensions in electrocardiography: the PhysioNet/Computing in Cardiology Challenge 2021.
+  2021 Computing in Cardiology (CinC); 2021:1-4. doi:10.23919/CinC53138.2021.9662687
+- [E4] Reyna M, Sadr N, Gu A, Perez Alday EA, Liu C, Seyedi S, Shah A, Clifford G. Will two do?
+  Varying dimensions in electrocardiography: the PhysioNet/Computing in Cardiology Challenge
+  2021 (version 1.0.3). PhysioNet. 2022. doi:10.13026/34va-7q14
+- [E5] Zheng J, Chu H, Struppa D, Zhang J, Yacoub SM, El-Askary H, et al. Optimal multi-stage
+  arrhythmia classification approach. Sci Rep. 2020;10:2898. doi:10.1038/s41598-020-59821-7
+- [E6] Zheng J, Guo H, Chu H. A large scale 12-lead electrocardiogram database for arrhythmia
+  study (version 1.0.0). PhysioNet. 2022. doi:10.13026/wgex-er52
+- [E7] Ribeiro AH, Ribeiro MH, Paixão GMM, Oliveira DM, Gomes PR, Canazart JA, et al. Automatic
+  diagnosis of the 12-lead ECG using a deep neural network. Nat Commun. 2020;11:1760.
+  doi:10.1038/s41467-020-15432-4
+- [E8] Ribeiro AH, Paixao GMM, Lima EM, Horta Ribeiro M, Pinto Filho MM, Gomes PR, et al.
+  CODE-15%: a large scale annotated dataset of 12-lead ECGs (version 1.0.0). Zenodo. 2021.
+  doi:10.5281/zenodo.4916206
+- [E9] Angelopoulos AN, Bates S, Fisch A, Lei L, Schuster T. Conformal risk control. In:
+  International Conference on Learning Representations (ICLR); 2024. arXiv:2208.02814
+
+PhysioNet also asks users to cite the platform: Pollard T, Moody BE, Lehman L, et al. PhysioNet
+as a global platform for biomedical research. Nature Health. 2026. doi:10.1038/s44360-026-00096-z
+(added to the paper's main reference list, not repeated here).
