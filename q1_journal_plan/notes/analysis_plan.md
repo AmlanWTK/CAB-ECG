@@ -69,7 +69,10 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
 CAB (alpha = 0.05) and the chapter's comparators: as supplied, label-free reset, prevalence
 correction, recalibration, fine-tuning, local retraining, closed testing, point-estimate validation
 (all labels; first 500), Learn-then-Test without order, CAB without adapt; plus conformal risk
-control (as in the ECG study).
+control (as in the ECG study); and from WP7 (`notes/wp7_design.md`): Bayesian updating from a flat
+prior (at 0.95 and at CAB's strictness, 1 - alpha/4), Bayesian updating with the source's home
+validation as prior, a precision-based minimum sample size followed by point estimates, and CORAL
+domain adaptation (label-free, and recalibrated).
 
 ## 8. Experiment
 
@@ -102,9 +105,12 @@ second training seed; eICU hospitals that fail the recording check, reported sep
   later groups) and eICU transfers (deployment at one hospital or group, audits from another).
 - Outcomes: false alarms in runs where the deployment stays safe; detection and audits to
   alarm where it becomes unsafe, by size of the drift.
-- **[decide]** whether sensitivity audits are enriched for septic stays, and whether the guarantee
-  is the probability of any false alarm or the average time to one, once the ECG comparison of
-  the two is done.
+- Audits: every stay, with the Sepsis-3 label computed from the record (no chart review), so no
+  enrichment is needed. CUSUM e-detector (average time to a false alarm at least 5,000 and 20,000
+  stays) as a secondary analysis.
+- **[decide]** confirm the probability of any false alarm as the guarantee. On ECG it found more
+  drifts, sooner, than the CUSUM detector (87% vs 79-81% within 16,000 audits;
+  `notes/wp8_design.md`).
 
 ## 12. Reporting
 
@@ -114,7 +120,7 @@ TRIPOD+AI checklist; code and this plan released with the paper; every deviation
 
 1. Targets: single hospitals or groups, once septic counts per hospital are known.
 2. Label budgets, once target sizes are known.
-3. Monitoring: enriched sensitivity audits; type of false-alarm guarantee (section 11).
+3. Monitoring: confirm the type of false-alarm guarantee (section 11).
 
 Decided 2026-10-30: recording thresholds 20% / 10% (section 4); false-alert limit home + 0.05
 (section 6).

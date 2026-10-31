@@ -1,6 +1,6 @@
 # WP8: monitoring after deployment
 
-2026-10-30. First build and test on the ECG domain; the sepsis test (MIMIC-IV temporal split,
+2026-10-30, second round 2026-10-31. Built and tested on the ECG domain; the sepsis test (MIMIC-IV temporal split,
 eICU) waits for PhysioNet access. Code: `code/wp8_monitor.py`. Results:
 `outputs/ecg/W8_report.md` (window 100, primary) and `W8w50`, `W8w250`, `W8w500` (window
 sensitivity analysis).
@@ -110,11 +110,46 @@ false alarms at most 0.2% throughout. The window is not what limits power.
     false alarm instead of the probability of any false alarm;
   - bets mixed over a grid of fractions instead of a single estimated bet.
 
+## Second round (2026-10-31): CUSUM detector and a longer horizon
+
+- **CUSUM-ARL.** The same windowed bets in a CUSUM e-detector (Shin, Ramdas and Rinaldo):
+  log M_j = max(log M_{j-1}, 0) + log(1 + lambda_j x_j) per criterion, with an alarm when the
+  average of the two statistics reaches ARL. While safe, the expected number of audits before a
+  false alarm is at least ARL. Run at ARL 5,000 and 20,000.
+- **Longer horizon.** 16,000 audits after the change instead of 4,000 (`W8long_report.md`). More
+  audits stand in for positive-enriched audits: both give the sensitivity test more positives.
+
+| | false alarms, 6,000 / 18,000 audits | drifts found within 4,000 / 16,000 audits | large drifts found within 16,000 | median audits to alarm (16,000) |
+|---|---|---|---|---|
+| MONITOR | 0.0% / 0.1% | 65% / 87% | 99% | 1,338 |
+| CUSUM-5k | 0.0% / 0.0% | 48% / 81% | 95% | 2,416 |
+| CUSUM-20k | 0.0% / 0.0% | 45% / 79% | 94% | 2,630 |
+| CHECK-POINT | 99% / 100% | 7% / 7% | 7% | 250 |
+| CHECK-TEST | 9-12% / 25-32% | 83% / 94% | 97% | 500 |
+
+Reading:
+- **The CUSUM detector is worse here.** To promise a long average time to a false alarm, its
+  alarm level must be far higher (log 5,000 against log 40), and the windowed bets already
+  remove the slow restart it is meant to fix. The Ville monitor finds more drifts, sooner.
+- **Power is a matter of audit volume, not blindness.** Given 16,000 audits, the monitor found
+  99% of large drifts and 67% of small ones, with at most 0.1% false alarms.
+- **Uncorrected repeated tests get worse with time.** Over 18,000 audits a quarter to a third of
+  safe deployments were falsely alarmed. Their extra detection is bought with false alarms that
+  keep accumulating.
+- **Proposed for sepsis:** the Ville monitor (probability of any false alarm at most 0.05) as
+  primary, CUSUM as a secondary analysis. For sepsis the Sepsis-3 label can be computed from the
+  record for every stay, so every stay can be audited without chart review. That removes most of
+  the power limit seen here.
+
 ## Open
 
-- Choose the guarantee for the paper: the probability of any false alarm (as here) or the
-  average run length to a false alarm (CUSUM-type). Clinically, the first is simpler to state.
+- Confirm the guarantee for the paper. ECG favours the probability of any false alarm (above),
+  which is also simpler to state clinically.
 - Sepsis: patient-level criteria mean an audit is a whole stay. The MIMIC-IV temporal split
   (earlier anchor-year groups as A, later as B) is the planned test.
-- References to check before writing: Ville (1939); Waudby-Smith and Ramdas (JRSS-B 2024) for
-  betting confidence sequences and aGRAPA; Shin, Ramdas and Rinaldo (e-detectors).
+- References checked 2026-10-31:
+  - Waudby-Smith I, Ramdas A. Estimating means of bounded random variables by betting. J R Stat
+    Soc Series B. 2024;86(1):1-27. doi:10.1093/jrsssb/qkad009
+  - Shin J, Ramdas A, Rinaldo A. E-detectors: a nonparametric framework for sequential change
+    detection. New Engl J Stat Data Sci. 2023:229-260. doi:10.51387/23-NEJSDS51
+  - Still to add: Ville J. Etude critique de la notion de collectif. Gauthier-Villars; 1939.

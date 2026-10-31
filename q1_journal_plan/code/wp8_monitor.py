@@ -17,6 +17,12 @@ inequality the chance that it ever reaches 2/delta is at most delta/2: the proba
 false alarm, over an unlimited number of audits, is at most delta. The window lets the bets grow
 soon after a change instead of being held down by the safe history.
 
+CUSUM-<ARL>. The same bets in a CUSUM e-detector (Shin, Ramdas and Rinaldo): per criterion,
+log M_j = max(log M_{j-1}, 0) + log(1 + lambda_j x_j), which restarts the evidence whenever it
+falls below 1; alarm when the average of the two statistics reaches ARL. While every audit comes
+from a safe population, the expected number of audits before a false alarm is at least ARL. This
+bounds the average time to a false alarm, not the probability of any false alarm.
+
 Comparators (no guarantee over repeated looks):
     CHECK-POINT  every BATCH audits, the point estimates on the last BATCH audits against s*, f*
     CHECK-TEST   every BATCH audits, exact one-sided binomial tests on the last BATCH audits at
@@ -29,6 +35,7 @@ it is safe on B (including B = A, no change).
 Run from the repository root after ecg_e3_cab.py:
     python q1_journal_plan/code/wp8_monitor.py [--reps 200]
     python q1_journal_plan/code/wp8_monitor.py --window 250 --tag W8w250   (sensitivity analysis)
+    python q1_journal_plan/code/wp8_monitor.py --t-post 16000 --tag W8long (longer horizon)
 Writes outputs/ecg/<tag>_runs.csv and <tag>_report.md.
 """
 
@@ -54,7 +61,8 @@ WINDOW, C = 100, 0.5  # betting window (observations per criterion) and clipping
 T_PRE, T_POST = 2000, 4000
 BATCH = 250
 MIN_POS = 50          # positives a cohort needs for its truth to be judged
-MONITORS = ["MONITOR", "CHECK-POINT", "CHECK-TEST"]
+ARLS = [5000, 20000]  # CUSUM monitors: guaranteed average audits to a false alarm
+MONITORS = ["MONITOR"] + [f"CUSUM-{a // 1000}k" for a in ARLS] + ["CHECK-POINT", "CHECK-TEST"]
 LARGE_SENS, LARGE_FPR = 0.05, 2.0   # reporting only: what counts as a large drift
 BUDGETS = [250, 500, 1000, 2000, 4000, 8000, 16000]  # as ecg_e3_cab.py; the largest that fits is used
 
@@ -95,6 +103,27 @@ def monitor_alarm(y, h, f_star):
          first_crossing(h[neg].astype(float) - f_star, -f_star, neg)]
     a = [t for t in a if t >= 0]
     return min(a) if a else -1
+
+
+def cusum_path(x, lower, times, T):
+    """log CUSUM statistic on the audit clock (0 before the stream's first observation)."""
+    out = np.zeros(T)
+    if len(x) == 0:
+        return out
+    S = np.concatenate([[0.0], np.cumsum(np.log1p(window_bets(x, lower) * x))])
+    W = S[1:] - np.minimum.accumulate(S[:-1])       # W_j = max(W_{j-1}, 0) + z_j, W_0 = 0
+    last = np.searchsorted(times, np.arange(T), side="right") - 1
+    out[last >= 0] = W[last[last >= 0]]
+    return out
+
+
+def cusum_alarm(y, h, f_star, arl):
+    T = len(y)
+    pos, neg = np.flatnonzero(y), np.flatnonzero(~y)
+    ws = cusum_path(S_STAR - h[pos].astype(float), S_STAR - 1, pos, T)
+    wf = cusum_path(h[neg].astype(float) - f_star, -f_star, neg, T)
+    hit = np.flatnonzero(np.logaddexp(ws, wf) - np.log(2) >= np.log(arl))
+    return int(hit[0]) if len(hit) else -1
 
 
 def batch_alarm(y, h, f_star, test):
@@ -173,6 +202,8 @@ def run_site(a_name, sites, home, reps):
                        "unsafe_a": bool(sensA < S_STAR or fprA > f_star),
                        "unsafe_b": bool(sensB < S_STAR or fprB > f_star)}
                 row["MONITOR"] = monitor_alarm(y, h, f_star)
+                for arl in ARLS:
+                    row[f"CUSUM-{arl // 1000}k"] = cusum_alarm(y, h, f_star, arl)
                 row["CHECK-POINT"] = batch_alarm(y, h, f_star, test=False)
                 row["CHECK-TEST"] = batch_alarm(y, h, f_star, test=True)
                 rows.append(row)
@@ -201,7 +232,7 @@ def summarise(res, tag):
     g = on[on.kind == "drift to unsafe"]
     lines += ["", "## Drift to an unsafe population", "",
               f"{len(g)} runs, {g.drop_duplicates(['site_a', 'finding', 'site_b']).shape[0]} scenarios.", "",
-              "| monitor | alarm before change | detected within T_POST | median audits to alarm after change |",
+              f"| monitor | alarm before change | detected within {T_POST} audits | median audits to alarm after change |",
               "|---|---|---|---|"]
     for m in MONITORS:
         early = (g[m] >= 0) & (g[m] < T_PRE)
@@ -233,14 +264,16 @@ def summarise(res, tag):
 
 
 def main():
-    global WINDOW
+    global WINDOW, T_POST
     ap = argparse.ArgumentParser()
+    ap.add_argument("--t-post", type=int, default=T_POST)
     ap.add_argument("--reps", type=int, default=200)
     ap.add_argument("--window", type=int, default=WINDOW)
     ap.add_argument("--tag", default="W8")
     ap.add_argument("--summary-only", action="store_true")
     a = ap.parse_args()
     WINDOW = a.window
+    T_POST = a.t_post
     out_csv = e3.OUT / f"{a.tag}_runs.csv"
     if not a.summary_only:
         idx = pd.read_csv(e3.INDEX_CSV, low_memory=False).set_index("record_id")
