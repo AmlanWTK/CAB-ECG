@@ -50,6 +50,16 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
   into train / validation / home-test by patient as in the chapter.
 - Transfers: every source to every eligible target outside its own system; plus home controls.
 - MIMIC-IV temporal split for WP8: earlier anchor-year groups as source, later as target.
+- Open external target (added 2026-10-31): PhysioNet/CinC 2019 Challenge hospital B (Emory;
+  `data/sepsis2019/training/training_setB`, open access): 20,000 patients, 1,142 septic (5.7%),
+  761,995 hours. It is outside both MIMIC-IV and eICU, and its 34 measured variables match ours.
+  - Its labels follow the Challenge rule, and the raw records are not released, so they cannot
+    be relabelled. Transfers to B therefore use source models trained and certified on
+    Challenge-rule labels (MIMIC-IV and eICU, `--definition challenge`), and are judged on B's
+    own labels. They are reported with the Challenge-rule sensitivity analysis, not the primary.
+  - The eICU recording check does not apply to B (the Challenge organisers built its labels).
+  - Hospital A (Beth Israel, the MIMIC-IV hospital in earlier years) is not an external target;
+    it may serve as a check of MIMIC-IV labels over time. Hospital C was never released.
 
 ## 5. Imported model
 
@@ -124,7 +134,8 @@ TRIPOD+AI checklist; code and this plan released with the paper; every deviation
 
 ## To decide before the full run
 
-1. Targets: single hospitals or groups, once septic counts per hospital are known.
+1. Targets: single hospitals or groups, once septic counts per hospital are known. Challenge
+   hospital B is a target in any case (section 4).
 2. Label budgets, once target sizes are known.
 
 Decided 2026-10-30: recording thresholds 20% / 10% (section 4); false-alert limit home + 0.05
