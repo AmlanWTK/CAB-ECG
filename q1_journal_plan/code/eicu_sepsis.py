@@ -4,7 +4,9 @@ Inputs (eICU-CRD v2.0 layout; the open demo by default): patient, microLab, medi
 respiratoryCare, respiratoryCharting, vitalPeriodic, vitalAperiodic, nurseCharting, infusiondrug,
 intakeOutput. eICU times are minutes from unit admission; hour h covers [h, h+1). Each SOFA
 component is scored from the worst value in the hour; events up to 24 h before admission count
-towards hour 0. Large tables are read in chunks.
+towards hour 0. Large tables are read once each, in chunks, and reduced to hourly values chunk by
+chunk (bigtable.py), so the same code runs on the full database in 16 GB; finished passes are kept
+in <out>_cache/ and reused (delete it after changing the extraction).
 
 Choices (notes/sepsis_labels.md), matched to the MIMIC-IV extractor where the data allow:
   - cultures: from microLab or from culture orders in the treatment table (eICU fills microLab at
@@ -15,8 +17,8 @@ Choices (notes/sepsis_labels.md), matched to the MIMIC-IV extractor where the da
     inhaled, plus "antibacterials" in the treatment table; time = order start. challenge: IV routes
     only, courses as in MIMIC-IV (joined if less than 24 h apart, at least 72 h long)
   - hospital recording check: a hospital is "adequate" if antibiotics are recorded in at least
-    MIN_ABX_SHARE of its stays and cultures in at least MIN_CULTURE_SHARE (provisional thresholds,
-    to be fixed in the analysis plan before the full run; recording rates, not outcomes)
+    MIN_ABX_SHARE of its stays and cultures in at least MIN_CULTURE_SHARE (recording rates, not
+    outcomes; 20% and 10%, decided in the analysis plan)
   - PaO2/FiO2: lab paO2 with the latest FiO2 (lab or respiratory charting) in the previous 4 h;
     ventilation from respiratoryCare vent start/end
   - GCS: nurseCharting "GCS Total" (text such as "Unable to score due to medication" not scored)
@@ -44,6 +46,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bigtable as BT  # noqa: E402
 import challenge_format as CF  # noqa: E402
 import sepsis3 as S3  # noqa: E402
 from mimiciv_sepsis import ANTIBIOTICS, COURSE_GAP, COURSE_MIN, hour_of  # noqa: E402
@@ -55,39 +58,116 @@ LABS = {"paO2": "pao2", "FiO2": "fio2", "platelets x 1000": "platelets", "total 
 PRESSORS = {"norepinephrine": "norepi", "epinephrine": "epi", "dopamine": "dopa", "dobutamine": "dobu"}
 UNKNOWN_RATE = 0.01   # given, rate unknown: the lowest SOFA tier for the drug
 EXCLUDED_ROUTE_WORDS = ["TOP", "OPHTH", "EYE", "OTIC", "EAR", "INHAL", "NEB", "VAG"]
-MIN_ABX_SHARE, MIN_CULTURE_SHARE = 0.20, 0.10   # provisional
+CHAL_DTYPE = np.float32   # hourly sums for the Challenge table: half the memory of float64
+MIN_ABX_SHARE, MIN_CULTURE_SHARE = 0.20, 0.10   # decided 2026-10-30 (notes/analysis_plan.md)
 
 
 def read(root, name, usecols, filt=None):
-    path = root / f"{name}.csv.gz"
-    parts = []
-    for c in pd.read_csv(path, usecols=usecols, chunksize=2_000_000, low_memory=False):
-        parts.append(filt(c) if filt else c)
-    return pd.concat(parts, ignore_index=True)
+    return BT.read(root / f"{name}.csv.gz", usecols, filt)
 
 
-def export_challenge(root, stays, grid, hc, out):
+class Stays:
+    """Stay lengths, for keeping events inside a stay's window chunk by chunk."""
+
+    def __init__(self, stays):
+        self.hours = stays.set_index("stay").hours
+        self.grid = BT.Grid(stays.stay, stays.hours)
+
+    def window(self, stay, offset_min, lo):
+        """Mask and times (hours) of events from `lo` hours before admission to unit discharge."""
+        t = offset_min / 60
+        return (t >= lo) & (t <= stay.map(self.hours)), t
+
+
+def pass_vitals(root, S, table, cols, map_col):
+    """One pass over vitalPeriodic or vitalAperiodic: hourly lowest MAP (SOFA) and hourly means of
+    the Challenge variables."""
+    sofa = BT.HourlyAgg("min", S.grid, ["map"])
+    chal = BT.HourlyAgg("mean", S.grid, list(dict.fromkeys(cols.values())), CHAL_DTYPE)
+    for c in BT.chunks(root / f"{table}.csv.gz", ["patientunitstayid", "observationoffset"] + list(cols)):
+        c = c[c.patientunitstayid.isin(S.hours.index)]
+        ok, t = S.window(c.patientunitstayid, c.observationoffset, -24.0)
+        m = c[map_col]
+        ok &= (m > 10) & (m < 250)
+        sofa.add(pd.DataFrame({"stay": c.patientunitstayid[ok], "hour": hour_of(t[ok]), "var": "map",
+                               "value": m[ok]}))
+        for col, var in cols.items():   # one column at a time keeps the long form small
+            chal.add(CF.long_events(c.patientunitstayid, c.observationoffset / 60, var, c[col]))
+    return sofa, chal
+
+
+def pass_nurse(root, S):
+    """nurseCharting: hourly lowest GCS (SOFA) and hourly mean temperature (Challenge)."""
+    gcs, temp = BT.HourlyAgg("min", S.grid, ["gcs"]), BT.HourlyAgg("mean", S.grid, ["Temp"], CHAL_DTYPE)
+    names = {"GCS Total", "Temperature (C)"}
+    for c in BT.chunks(root / "nurseCharting.csv.gz", ["patientunitstayid", "nursingchartoffset",
+                                                         "nursingchartcelltypevalname", "nursingchartvalue"],
+                       lambda c: c[c.nursingchartcelltypevalname.isin(names)]):
+        c = c[c.patientunitstayid.isin(S.hours.index)]
+        v = pd.to_numeric(c.nursingchartvalue, errors="coerce")
+        g = (c.nursingchartcelltypevalname == "GCS Total") & (v >= 3) & (v <= 15)
+        ok, t = S.window(c.patientunitstayid, c.nursingchartoffset, -24.0)
+        g &= ok
+        gcs.add(pd.DataFrame({"stay": c.patientunitstayid[g], "hour": hour_of(t[g]), "var": "gcs", "value": v[g]}))
+        tc = (c.nursingchartcelltypevalname == "Temperature (C)") & v.between(25, 45)  # drop impossible values
+        temp.add(CF.long_events(c.patientunitstayid[tc], c.nursingchartoffset[tc] / 60, "Temp", v[tc]))
+    return gcs, temp
+
+
+def pass_lab(root, S):
+    """lab: hourly SOFA labs (lowest platelets, highest bilirubin and creatinine), PaO2 and FiO2
+    with their times, and hourly means of the Challenge labs."""
+    lo, hi = BT.HourlyAgg("min", S.grid, ["platelets"]), BT.HourlyAgg("max", S.grid, ["bilirubin", "creatinine"])
+    chal, raw = BT.HourlyAgg("mean", S.grid, list(dict.fromkeys(CF.EICU_LAB.values())), CHAL_DTYPE), []
+    names = set(LABS) | set(CF.EICU_LAB)
+    for c in BT.chunks(root / "lab.csv.gz", ["patientunitstayid", "labname", "labresultoffset", "labresult"],
+                       lambda c: c[c.labname.isin(names)]):
+        c = c[c.patientunitstayid.isin(S.hours.index)]
+        ok, t = S.window(c.patientunitstayid, c.labresultoffset, -24.0)
+        name = c.labname.map(LABS)
+        ok &= name.notna() & c.labresult.notna()
+        ev = pd.DataFrame({"stay": c.patientunitstayid[ok], "t": t[ok], "hour": hour_of(t[ok]),
+                           "var": name[ok], "value": c.labresult[ok]})
+        lo.add(ev[ev["var"] == "platelets"])
+        hi.add(ev[ev["var"].isin(["bilirubin", "creatinine"])])
+        raw.append(ev[ev["var"].isin(["pao2", "fio2"])][["stay", "t", "var", "value"]])
+        cl = c.labname.isin(list(CF.EICU_LAB))
+        chal.add(CF.long_events(c.patientunitstayid[cl], c.labresultoffset[cl] / 60,
+                                c.labname[cl].map(CF.EICU_LAB), c.labresult[cl]))
+    return lo, hi, chal, pd.concat(raw, ignore_index=True)
+
+
+def pass_small(root, S):
+    """The tables that are small once filtered, filtered chunk by chunk."""
+    keep = S.hours.index
+    mine = lambda c: c[c.patientunitstayid.isin(keep)]  # noqa: E731
+    pressor = "|".join(PRESSORS)
+    t = {}
+    t["microLab"] = read(root, "microLab", ["patientunitstayid", "culturetakenoffset", "culturesite"], mine)
+    t["treatment"] = read(root, "treatment", ["patientunitstayid", "treatmentoffset", "treatmentstring"],
+                          lambda c: mine(c)[mine(c).treatmentstring.fillna("").str.lower()
+                                            .str.contains("cultures|antibacterials")])
+    t["medication"] = read(root, "medication", ["patientunitstayid", "drugname", "routeadmin", "drugordercancelled",
+                                                "drugstartoffset", "drugstopoffset"],
+                           lambda c: mine(c)[mine(c).drugname.fillna("").str.lower().str.contains("|".join(ANTIBIOTICS))])
+    t["respiratoryCharting"] = read(root, "respiratoryCharting", ["patientunitstayid", "respchartoffset",
+                                                                  "respchartvaluelabel", "respchartvalue"],
+                                    lambda c: mine(c)[mine(c).respchartvaluelabel == "FiO2"])
+    t["respiratoryCare"] = read(root, "respiratoryCare", ["patientunitstayid", "ventstartoffset", "ventendoffset"], mine)
+    t["infusiondrug"] = read(root, "infusiondrug", ["patientunitstayid", "infusionoffset", "drugname", "drugrate",
+                                                    "patientweight"],
+                             lambda c: mine(c)[mine(c).drugname.fillna("").str.lower().str.contains(pressor)])
+    t["intakeOutput"] = read(root, "intakeOutput", ["patientunitstayid", "intakeoutputoffset", "cellpath", "celllabel",
+                                                    "cellvaluenumeric"],
+                             lambda c: mine(c)[mine(c).cellpath.fillna("").str.contains("Output")
+                                               & mine(c).celllabel.fillna("").str.contains("Urine|URINE")
+                                               & ~mine(c).celllabel.fillna("").str.contains("Stool|Count")])
+    return t
+
+
+def export_challenge(root, grid, hc, out, chal):
     """The Challenge-format hourly table (challenge_format.py) for the Challenge cohort."""
-    keep = set(stays.stay)
-    parts = []
-    for table, cols in [("vitalPeriodic", CF.EICU_PERIODIC), ("vitalAperiodic", CF.EICU_APERIODIC)]:
-        v = read(root, table, ["patientunitstayid", "observationoffset"] + list(cols))
-        v = v[v.patientunitstayid.isin(keep)].melt(id_vars=["patientunitstayid", "observationoffset"],
-                                                   var_name="col", value_name="value")
-        parts.append(pd.DataFrame({"stay": v.patientunitstayid, "t": v.observationoffset / 60,
-                                   "var": v.col.map(cols), "value": v.value}))
-    tc = read(root, "nurseCharting", ["patientunitstayid", "nursingchartoffset", "nursingchartcelltypevalname",
-                                      "nursingchartvalue"], lambda c: c[c.nursingchartcelltypevalname == "Temperature (C)"])
-    tv = pd.to_numeric(tc.nursingchartvalue, errors="coerce")
-    tc = tc[tv.between(25, 45)]  # temperature is mostly charted by nurses in eICU; drop impossible values
-    parts.append(pd.DataFrame({"stay": tc.patientunitstayid, "t": tc.nursingchartoffset / 60, "var": "Temp",
-                               "value": pd.to_numeric(tc.nursingchartvalue, errors="coerce")}))
-    lab = read(root, "lab", ["patientunitstayid", "labname", "labresultoffset", "labresult"],
-               lambda c: c[c.labname.isin(list(CF.EICU_LAB))])
-    parts.append(pd.DataFrame({"stay": lab.patientunitstayid, "t": lab.labresultoffset / 60,
-                               "var": lab.labname.map(CF.EICU_LAB), "value": lab.labresult}))
-    w = CF.wide(pd.concat(parts, ignore_index=True), grid)
-
+    w = CF.wide_from_hourly(chal.result(), grid)
     pt = read(root, "patient", ["patientunitstayid", "hospitalid", "age", "gender", "unittype", "hospitaladmitoffset"])
     demo = pd.DataFrame({"stay": pt.patientunitstayid, "site": pt.hospitalid.astype(str),
                          "unit": pt.unittype.map(CF.EICU_UNITS).fillna("other"),
@@ -109,35 +189,34 @@ def main():
     ap.add_argument("--definition", choices=["relaxed", "challenge"], default="relaxed")
     a = ap.parse_args()
     root, out = Path(a.root), Path(f"{a.out}_{a.definition}")
+    cache = Path(f"{a.out}_cache")   # shared by both definitions
     relaxed = a.definition == "relaxed"
     out.parent.mkdir(parents=True, exist_ok=True)
 
     pt = read(root, "patient", ["patientunitstayid", "hospitalid", "unitdischargeoffset", "admissionweight"])
     stays = pt.rename(columns={"patientunitstayid": "stay"})
     stays["hours"] = np.ceil(stays.unitdischargeoffset / 60).clip(lower=1).astype(int)
-    keep = set(stays.stay)
+    S = Stays(stays)
     print(f"{len(stays)} ICU stays, {stays.hospitalid.nunique()} hospitals")
+    small = BT.cached(cache, "small_tables", lambda: pass_small(root, S))
 
     def in_window(df, t_col, lo=-24.0):
         df = df.rename(columns={"patientunitstayid": "stay"})
-        df = df[df.stay.isin(keep)].copy()
-        df["t"] = df[t_col] / 60
-        df = df.merge(stays[["stay", "hours"]], on="stay")
-        return df[(df.t >= lo) & (df.t <= df.hours)].drop(columns="hours")
+        ok, t = S.window(df.stay, df[t_col], lo)
+        return df[ok].assign(t=t[ok])
 
     # --- suspected infection ---
-    mb = read(root, "microLab", ["patientunitstayid", "culturetakenoffset", "culturesite"])
+    mb = small["microLab"]
     if not relaxed:
         mb = mb[mb.culturesite.fillna("").str.contains("Blood")]
     mb = mb.rename(columns={"culturetakenoffset": "offset"})
-    tr_all = read(root, "treatment", ["patientunitstayid", "treatmentoffset", "treatmentstring"])
+    tr_all = small["treatment"]
     ts = tr_all.treatmentstring.fillna("").str.lower()
     tr = tr_all[ts.str.contains("cultures") & (ts.str.contains("blood") | relaxed)]
     tr = tr.rename(columns={"treatmentoffset": "offset"})
     cultures = in_window(pd.concat([mb[["patientunitstayid", "offset"]], tr[["patientunitstayid", "offset"]]]),
                          "offset", lo=-S3.ABX_AFTER_CULTURE)
-    md = read(root, "medication", ["patientunitstayid", "drugname", "routeadmin", "drugordercancelled",
-                                   "drugstartoffset", "drugstopoffset"])
+    md = small["medication"]
     route = md.routeadmin.fillna("").str.strip().str.upper()
     is_abx = (md.drugname.fillna("").str.lower().str.contains("|".join(ANTIBIOTICS))
               & (md.drugordercancelled.fillna("No") != "Yes"))
@@ -156,56 +235,46 @@ def main():
     t_susp = S3.suspicion_times(cultures, abx)
 
     # --- hourly features ---
-    grid = pd.DataFrame([(s, h) for s, n in zip(stays.stay, stays.hours) for h in range(n)],
-                        columns=["stay", "hour"])
+    grid = S.grid.frame()
 
     def hourly(ev, col, how):
         ev = ev.assign(hour=hour_of(ev.t))
         return ev.groupby(["stay", "hour"])[col].agg(how).rename(col)
 
-    lab = read(root, "lab", ["patientunitstayid", "labname", "labresultoffset", "labresult"],
-               lambda c: c[c.labname.isin(list(LABS))])
-    lab = in_window(lab.dropna(subset=["labresult"]), "labresultoffset")
-    lab["name"] = lab.labname.map(LABS)
-    feats = {}
-    for name, how in [("platelets", "min"), ("bilirubin", "max"), ("creatinine", "max")]:
-        feats[name] = hourly(lab[lab.name == name].rename(columns={"labresult": name}), name, how)
+    lab_lo, lab_hi, lab_chal, lab_raw = BT.cached(cache, "lab", lambda: pass_lab(root, S))
+    feats = {"platelets": lab_lo.series("platelets"), "bilirubin": lab_hi.series("bilirubin"),
+             "creatinine": lab_hi.series("creatinine")}
 
-    rch = read(root, "respiratoryCharting", ["patientunitstayid", "respchartoffset", "respchartvaluelabel",
-                                             "respchartvalue"], lambda c: c[c.respchartvaluelabel == "FiO2"])
+    rch = small["respiratoryCharting"].copy()
     rch["fio2"] = pd.to_numeric(rch.respchartvalue, errors="coerce")
     rch = in_window(rch.dropna(subset=["fio2"]), "respchartoffset")
-    fio2 = pd.concat([lab[lab.name == "fio2"][["stay", "t", "labresult"]].rename(columns={"labresult": "fio2"}),
+    fio2 = pd.concat([lab_raw[lab_raw["var"] == "fio2"][["stay", "t", "value"]].rename(columns={"value": "fio2"}),
                       rch[["stay", "t", "fio2"]]])
     fio2["fio2"] = np.where(fio2.fio2 > 1, fio2.fio2 / 100, fio2.fio2)
     fio2 = fio2[(fio2.fio2 >= 0.21) & (fio2.fio2 <= 1)].sort_values("t")
-    pao2 = lab[lab.name == "pao2"][["stay", "t", "labresult"]].rename(columns={"labresult": "pao2"}).sort_values("t")
+    pao2 = lab_raw[lab_raw["var"] == "pao2"][["stay", "t", "value"]].rename(columns={"value": "pao2"}).sort_values("t")
     pf = pd.merge_asof(pao2, fio2, on="t", by="stay", direction="backward", tolerance=4.0).dropna(subset=["fio2"])
     pf["pf"] = pf.pao2 / pf.fio2
     feats["pf"] = hourly(pf, "pf", "min")
 
-    rc = read(root, "respiratoryCare", ["patientunitstayid", "ventstartoffset", "ventendoffset"])
+    rc = small["respiratoryCare"]
     rc = rc[(rc.ventendoffset > rc.ventstartoffset)].rename(columns={"patientunitstayid": "stay"})
-    rc = rc[rc.stay.isin(keep)].merge(stays[["stay", "hours"]], on="stay")
+    rc = rc.merge(stays[["stay", "hours"]], on="stay")
     vent = [(s, h) for s, a_, b_, n in zip(rc.stay, hour_of(rc.ventstartoffset / 60), hour_of(rc.ventendoffset / 60),
                                           rc.hours) for h in range(a_, min(b_, n - 1) + 1)]
     feats["ventilated"] = pd.Series(True, index=pd.MultiIndex.from_tuples(sorted(set(vent)), names=["stay", "hour"]),
                                     name="ventilated") if vent else pd.Series(dtype=bool, name="ventilated")
 
-    vp = read(root, "vitalPeriodic", ["patientunitstayid", "observationoffset", "systemicmean"])
-    va = read(root, "vitalAperiodic", ["patientunitstayid", "observationoffset", "noninvasivemean"])
-    mp = pd.concat([vp.rename(columns={"systemicmean": "map"}), va.rename(columns={"noninvasivemean": "map"})])
-    mp = in_window(mp.dropna(subset=["map"]), "observationoffset")
-    feats["map"] = hourly(mp[(mp["map"] > 10) & (mp["map"] < 250)], "map", "min")
+    vp_map, vp_chal = BT.cached(cache, "vitalPeriodic", lambda: pass_vitals(root, S, "vitalPeriodic",
+                                                                             CF.EICU_PERIODIC, "systemicmean"))
+    va_map, va_chal = BT.cached(cache, "vitalAperiodic", lambda: pass_vitals(root, S, "vitalAperiodic",
+                                                                              CF.EICU_APERIODIC, "noninvasivemean"))
+    feats["map"] = BT.HourlyAgg.merged([vp_map, va_map]).series("map")
+    gcs, temp = BT.cached(cache, "nurseCharting", lambda: pass_nurse(root, S))
+    feats["gcs"] = gcs.series("gcs")
 
-    nc = read(root, "nurseCharting", ["patientunitstayid", "nursingchartoffset", "nursingchartcelltypevalname",
-                                      "nursingchartvalue"], lambda c: c[c.nursingchartcelltypevalname == "GCS Total"])
-    nc["gcs"] = pd.to_numeric(nc.nursingchartvalue, errors="coerce")
-    nc = in_window(nc[(nc.gcs >= 3) & (nc.gcs <= 15)], "nursingchartoffset")
-    feats["gcs"] = hourly(nc, "gcs", "min")
-
-    inf = read(root, "infusiondrug", ["patientunitstayid", "infusionoffset", "drugname", "drugrate", "patientweight"])
-    inf = in_window(inf, "infusionoffset").merge(stays[["stay", "admissionweight"]], on="stay", how="left")
+    inf = in_window(small["infusiondrug"], "infusionoffset").merge(stays[["stay", "admissionweight"]], on="stay",
+                                                                   how="left")
     name = inf.drugname.fillna("").str.lower()
     rate = pd.to_numeric(inf.drugrate, errors="coerce")
     weight = pd.to_numeric(inf.patientweight, errors="coerce").fillna(inf.admissionweight)
@@ -219,11 +288,7 @@ def main():
         x = x[x.rate_kg > 0]
         feats[col] = hourly(x.rename(columns={"rate_kg": col}), col, "max")
 
-    io = read(root, "intakeOutput", ["patientunitstayid", "intakeoutputoffset", "cellpath", "celllabel",
-                                     "cellvaluenumeric"],
-              lambda c: c[c.cellpath.fillna("").str.contains("Output") & c.celllabel.fillna("").str.contains("Urine|URINE")
-                          & ~c.celllabel.fillna("").str.contains("Stool|Count")])
-    io = in_window(io, "intakeoutputoffset", lo=0)
+    io = in_window(small["intakeOutput"], "intakeoutputoffset", lo=0)
     feats["urine"] = hourly(io[(io.cellvaluenumeric >= 0)].rename(columns={"cellvaluenumeric": "urine"}), "urine", "sum")
 
     h = grid.set_index(["stay", "hour"]).join(pd.DataFrame(feats)).reset_index().sort_values(["stay", "hour"])
@@ -258,7 +323,8 @@ def main():
     ok = st[st.hospital_adequate]
     print(f"hospitals with adequate recording: {int(hosp.adequate.sum())} of {len(hosp)} ({len(ok)} stays)")
     S3.summary(ok, hc[hc.stay.isin(ok.index)])
-    export_challenge(root, stays, grid, hc, out)
+    chal = BT.HourlyAgg.merged([vp_chal, va_chal, temp, lab_chal])
+    export_challenge(root, grid, hc, out, chal)
     inc = ok[ok.excluded.isna()]
     by_h = inc.groupby("hospitalid").agg(stays=("septic", "size"), septic=("septic", "sum"))
     print(f"hospitals with >= 20 stays: {(by_h.stays >= 20).sum()}; with >= 5 septic stays: {(by_h.septic >= 5).sum()}")

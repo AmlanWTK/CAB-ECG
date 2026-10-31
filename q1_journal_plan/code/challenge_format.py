@@ -74,6 +74,25 @@ def wide(ev, grid):
     return w[VARS].reset_index()
 
 
+def long_events(stay, t, var, value):
+    """Measurements at t >= 0 in the Challenge's units, with their hour: the input to a
+    bigtable.HourlyAgg("mean") built chunk by chunk (the same values as wide() gives)."""
+    ev = pd.DataFrame({"stay": np.asarray(stay), "t": np.asarray(t, dtype=float), "var": np.asarray(var),
+                       "value": pd.to_numeric(pd.Series(np.asarray(value)), errors="coerce").to_numpy()})
+    ev = clean(ev[ev.t >= 0])
+    ev["hour"] = np.floor(ev.t).astype(int)
+    return ev
+
+
+def wide_from_hourly(hourly, grid):
+    """wide() from hourly means already computed (bigtable.HourlyAgg("mean").result())."""
+    w = grid.set_index(["stay", "hour"]).join(hourly)
+    for v in VARS:
+        if v not in w:
+            w[v] = np.nan
+    return w[VARS].reset_index()
+
+
 def assemble(w, hc, demo, db):
     """w: wide hourly variables; hc: Challenge-cohort hourly table with SepsisLabel; demo: per stay
     (stay, site, unit in {MICU, SICU, other}, Age, Gender, HospAdmTime). Returns the chapter's table."""

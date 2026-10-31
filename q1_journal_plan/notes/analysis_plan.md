@@ -29,6 +29,11 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
 - Suspected infection, primary ("relaxed"): any non-screening culture and any systemic antibiotic
   order, paired 72 h / 24 h. Sensitivity analysis: the Challenge's own rule (blood culture, IV
   antibiotic course of at least 72 h) on MIMIC-IV.
+- Label check before any model is run (`notes/label_check.md`, fixed 2026-10-31): MIMIC-IV
+  under the Challenge rule within 5-13% septic (Challenge hospital A, the same hospital in
+  earlier years: 8.8%); the relaxed rule at least as high and mostly containing the Challenge
+  rule's cases; eICU hospitals passing the recording check within 3-15%; SOFA coverage close to
+  the demos. A failure is investigated and documented, not tuned away.
 
 ## 4. Hospitals and transfers
 

@@ -1,9 +1,9 @@
-# ECG domain: methods and results (draft 2)
+# ECG domain: methods and results (draft 3)
 
-Draft for the journal paper, 2026-10-30 (draft 2: whole-cohort judge primary). New text, not taken from the book chapter. Numbers
+Draft for the journal paper, 2026-10-31 (draft 3: further comparators and monitoring added; draft 2: whole-cohort judge primary). New text, not taken from the book chapter. Numbers
 come from `outputs/ecg/` (seed 0 unless stated; seeds 1 and 2 as ranges). Figures are
-`outputs/ecg/figures/F1-F4`. References [E1]-[E9] checked against the dataset pages and DOIs on
-2026-10-30.
+`outputs/ecg/figures/F1-F6`. References [E1]-[E14] checked against the dataset pages and DOIs on
+2026-10-30 and 2026-10-31; [E15] from the standard citation.
 
 ---
 
@@ -122,6 +122,66 @@ We compared CAB with nine alternatives, all given the same labelled ECGs:
   switches the finding on only if its bound on the FPR is at most f*. CRC controls both rates in
   expectation over the labelled sample. CAB controls them with high probability.
 
+### Further comparators
+
+A second set of comparators tested approaches a hospital might use instead of local validation.
+All used the same labelled ECGs as CAB and the same judge, under the primary criterion.
+
+- **Bayesian updating, flat prior.** On the imported model, the highest threshold with posterior
+  probability at least 0.95 that sensitivity is at least s* (Beta(1, 1) prior), switched on if
+  the posterior probability that the FPR is at most f* is also at least 0.95.
+- **Bayesian updating at CAB's strictness.** The same, with posterior probability 1 - alpha/4 =
+  0.9875 for each criterion, matching the level of CAB's tests.
+- **Bayesian updating with the vendor's validation as prior.** At each threshold, the source's
+  home counts (PTB-XL fold 10) are added to the target's, as when a hospital treats the
+  vendor's validation as prior knowledge.
+- **A minimum sample size, then point estimates.** Following the precision-based approach to
+  sample size for external validation [E10, E11], here applied to the two criteria: the finding
+  is switched on only once the labels hold enough positives to estimate sensitivity at s* to
+  within ±0.05 (139 positives) and enough negatives to estimate the FPR at f* to within ±f*/2
+  (95% intervals). Remedies are then accepted on point estimates, as in local validation.
+- **Unsupervised domain adaptation (CORAL [E12]).** The target embeddings are aligned to the
+  mean and covariance of the source's training embeddings and scored by the network's own
+  output layer at the vendor threshold. The output layer was recovered from the stored source
+  scores and embeddings; it reproduces the imported scores to within 0.00002. A second version
+  recalibrates the threshold on the labels and switches on if the point estimates meet both
+  criteria.
+
+### Monitoring after deployment
+
+Once a finding is switched on, the population it reads may change. We tested a monitor that
+re-opens the gate when the switched-on model and threshold stop meeting the criteria.
+
+- **Audits.** After deployment, a random sample of the ECGs the model reads is labelled, one at
+  a time.
+- **Monitor.** Two betting tests [E13], one per criterion, each at level 0.025:
+  - for each audited positive, x = s* - 1(alerted), whose mean is at most 0 while sensitivity
+    is at least s*;
+  - for each audited negative, x = 1(alerted) - f*, whose mean is at most 0 while the FPR is at
+    most f*.
+
+  The capital is the product of (1 + lambda x) over audits. Each bet lambda ≥ 0 is set from the
+  previous 100 observations only (a windowed aGRAPA bet [E13]) and clipped so that each factor is
+  at least 0.5. An alarm is raised when either capital reaches 2/0.05 = 40. While every audit
+  comes from a population on which the configuration is safe, each capital is a nonnegative
+  supermartingale. Ville's inequality [E15] then bounds the probability of any false alarm, over an
+  unlimited number of audits, by 0.05. The window lets the bets respond to recent audits rather
+  than being held at zero by a long safe history.
+- **Comparators.**
+  - a CUSUM e-detector [E14] with the same bets, which guarantees an average of at least 5,000
+    or 20,000 audits before a false alarm instead of bounding its probability;
+  - point-estimate checks every 250 audits, on the last 250;
+  - exact binomial tests every 250 audits, on the last 250, at 0.025 each, uncorrected for the
+    repeated looks.
+- **Experiment.**
+  - Each target cohort in turn was the deployment site, with CAB run at the site's largest
+    budget and repeated 200 times per finding. Runs that CAB blocked were not monitored.
+  - 2,000 audits came from the deployment site, then 4,000 (or, in a second run, 16,000) from a
+    second population. That population was the same cohort (no change), another cohort with at
+    least 50 positives for the finding, or CODE-15% with halved signals (a change of device).
+  - The truth was whether the deployed configuration met both criteria on the whole cohort
+    being read.
+
 ### Experiment
 
 Label budgets were 250, 500, 1,000, 2,000 and 4,000 ECGs, plus 8,000 and 16,000. A budget was
@@ -175,6 +235,10 @@ The following were added or changed after the first gate results were seen. All 
 - **Audit decisions.** The Ningbo AF decision and the fix to our indexing error both followed
   the label audit.
 - **New comparator.** CRC was added as a comparator.
+- **Further comparators and monitoring.** All were added after the gate results above. Bayesian
+  updating at CAB's strictness was added after the flat-prior version came close to CAB. The
+  monitor's window was fixed at 100 before its first run; the window sensitivity analysis
+  (50 to 500), the CUSUM detector and the 16,000-audit horizon were added after it.
 
 ---
 
@@ -327,6 +391,72 @@ with 0.6% unsafe.
 
 ---
 
+### Stronger comparators did not close the gap
+
+Table E7 and Figure F5 give the further comparators.
+
+- **Domain adaptation without labels** left 30 of 31 transfers unsafe (mean 96.8%). Aligning
+  the embeddings did not restore the operating point. With the threshold recalibrated on the
+  labels it was unsafe in 27.8% of runs, close to local validation.
+- **Bayesian updating with the vendor's validation as prior** was unsafe in 11.5% of runs, with
+  14 transfers above alpha. With few labels the prior, which no longer holds after the
+  transfer, dominated: it was unsafe in 15% of runs at 250 labels and 3% at 16,000.
+- **The minimum sample size** did not make point estimates safe. Once the labels sufficed it
+  behaved like local validation, and its unsafe rate rose with the budget: 0% at 250 labels,
+  where it almost never switched on, 16-18% at 2,000-8,000 and 38% at 16,000.
+- **Bayesian updating from a flat prior** came close to CAB: unsafe in 0.5% of runs, worst
+  transfer 3.4%. At CAB's strictness it was as safe as CAB (0.1%, worst 0.8%) but switched on
+  less often: 12.4% of runs against 14.4%, and 49% against 80% at Ningbo's 16,000 labels.
+  - The difference is the adapt stage. Of 340 runs in which CAB switched on an adapted model,
+    the matched Bayesian policy switched on 3.
+  - Where both work on the imported model, they agree: in every run where CAB recalibrated or
+    kept the model, the matched Bayesian policy switched it on too.
+
+Table E7. Further comparators: 31 transfers, all budgets, primary criterion, judged on the
+whole cohort, seed 0. CAB, local validation and CRC from Table E4.
+
+| Policy | Mean unsafe | Worst transfer | Transfers above alpha | Runs switched on |
+|---|---|---|---|---|
+| Domain adaptation, no labels | 96.8% | 100% | 30 | 100% |
+| Domain adaptation, recalibrated | 27.8% | 57.7% | 23 | 43.1% |
+| Bayesian, vendor's validation as prior | 11.5% | 58.0% | 14 | 33.1% |
+| Minimum sample size, then point estimates | 8.6% | 41.6% | 11 | 19.7% |
+| Bayesian, flat prior (95%) | 0.5% | 3.4% | 0 | 15.6% |
+| Bayesian, flat prior (CAB's strictness) | 0.1% | 0.8% | 0 | 12.4% |
+| Local validation | 32.8% | 69.0% | 25 | 52.7% |
+| Conformal risk control | 15.1% | 43.8% | 17 | 31.9% |
+| CAB | 0.1% | 0.8% | 0 | 14.4% |
+
+So, on these data, a careful Bayesian analysis of the imported model would have been about as
+safe as CAB. What CAB adds is a guarantee stated in advance, which does not depend on the
+transfers lying far from the criteria, and a certified way to adapt the model when a new
+threshold is not enough.
+
+### A betting monitor caught drifts without false alarms
+
+Of 6,200 deployments (site, finding and repeat), CAB switched on 1,533. Three were unsafe at the
+deployment site and were left out. This left 3,245 runs in which the configuration stayed safe
+after the change and 5,802 runs, in 58 scenarios, in which it became unsafe.
+
+- **False alarms.** Over 6,000 audits the betting monitor raised no false alarm. Over 18,000
+  audits it raised one in 0.1% of safe runs (Figure F6). Point-estimate checks raised false
+  alarms in 99-100% of safe runs. Uncorrected repeated tests raised them in 9-12% of safe runs
+  over 6,000 audits and 25-32% over 18,000, rising with every look.
+- **Detection.** Within 4,000 audits of the change, the monitor detected 65% of drifts; within
+  16,000, 87%, with a median of 1,338 audits to the alarm.
+  - It detected 99% of large drifts (sensitivity more than 0.05 below s*, or FPR above twice
+    f*) and 67% of small ones.
+  - Drifts just past a criterion were the hardest. A sensitivity of 0.88 against s* = 0.90
+    needs many audited positives to show, and at a prevalence of 2-4% audits supply few.
+- **Repeated tests** detected more (83% within 4,000 audits, 94% within 16,000), partly through
+  the same readiness to alarm that gave them false alarms on safe deployments.
+- **The CUSUM detector** raised no false alarms but detected fewer drifts, and later: 45-48%
+  within 4,000 audits and 79-81% within 16,000. Promising a long average time to a false alarm
+  needs a far higher alarm level (log 20,000 against log 40), and the window already keeps the
+  betting monitor responsive after a long safe stretch.
+- **The window** was not what limited power. Windows from 50 to 500 observations gave detection
+  of 63-66% within 4,000 audits, and at most 0.2% false alarms.
+
 ## Figure captions
 
 **F1.** Unsafe activation per transfer, by policy. Each point is one of 31 transfers (finding
@@ -346,6 +476,15 @@ and 84 for ADAPT.
 **F4.** Unsafe rate per transfer and budget, judged on the unlabelled ECGs only (x) and on the
 whole cohort (y, primary), for CAB, CRC and local validation. Axes are linear below 5% and
 logarithmic above.
+
+**F5.** Unsafe activation per transfer for the further comparators, with CAB. Each point is one
+of 31 transfers, pooled over label budgets; primary criterion, judged on the whole cohort, seed
+0. The tick marks the mean. The dashed line is alpha = 5%.
+
+**F6.** Monitoring after deployment. Left: share of safe deployments with any alarm over 18,000
+audits (3,245 runs). Right: share of drifts to an unsafe population detected, by the number of
+audits after the change (5,802 runs in 58 scenarios; 2,000 audits before the change, up to
+16,000 after). Alarms raised before the change are not counted as detections.
 
 ## References
 
@@ -373,6 +512,21 @@ logarithmic above.
   doi:10.5281/zenodo.4916206
 - [E9] Angelopoulos AN, Bates S, Fisch A, Lei L, Schuster T. Conformal risk control. In:
   International Conference on Learning Representations (ICLR); 2024. arXiv:2208.02814
+
+- [E10] Riley RD, Debray TPA, Collins GS, Archer L, Ensor J, van Smeden M, Snell KIE. Minimum
+  sample size for external validation of a clinical prediction model with a binary outcome.
+  Stat Med. 2021;40:4230-4251. doi:10.1002/sim.9025
+- [E11] Riley RD, Snell KIE, Archer L, Ensor J, Debray TPA, van Calster B, et al. Evaluation of
+  clinical prediction models (part 3): calculating the sample size required for an external
+  validation study. BMJ. 2024;384:e074821. doi:10.1136/bmj-2023-074821
+- [E12] Sun B, Feng J, Saenko K. Return of frustratingly easy domain adaptation. Proceedings of
+  the AAAI Conference on Artificial Intelligence. 2016;30:2058-2065.
+  doi:10.1609/aaai.v30i1.10306
+- [E13] Waudby-Smith I, Ramdas A. Estimating means of bounded random variables by betting. J R
+  Stat Soc Series B Stat Methodol. 2024;86(1):1-27. doi:10.1093/jrsssb/qkad009
+- [E14] Shin J, Ramdas A, Rinaldo A. E-detectors: a nonparametric framework for sequential change
+  detection. New Engl J Stat Data Sci. 2023:229-260. doi:10.51387/23-NEJSDS51
+- [E15] Ville J. Étude critique de la notion de collectif. Paris: Gauthier-Villars; 1939.
 
 PhysioNet also asks users to cite the platform: Pollard T, Moody BE, Lehman L, et al. PhysioNet
 as a global platform for biomedical research. Nature Health. 2026. doi:10.1038/s44360-026-00096-z

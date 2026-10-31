@@ -4,8 +4,12 @@
     F2  CAB: share of runs switched on, per transfer and label budget
     F3  labels needed against prevalence, with the 42-positive floor
     F4  whole-cohort judge (primary) vs the unlabelled ECGs only, per transfer and budget
+    F5  WP7 comparators: unsafe rate per transfer, by policy (wp7_comparators.py)
+    F6  WP8 monitoring: false alarms while safe, and drifts detected by audits after the change
+        (wp8_monitor.py, 16,000-audit horizon)
 
-Run from the repository root after ecg_e3_cab.py and ecg_e5_labels.py:
+Run from the repository root after ecg_e3_cab.py, ecg_e5_labels.py, wp7_comparators.py and
+wp8_monitor.py --t-post 16000 --tag W8long:
     python q1_journal_plan/code/ecg_figures.py
 Writes outputs/ecg/figures/<name>.pdf and .png, in the chapter's figure style.
 """
@@ -210,6 +214,87 @@ def f4_judges(r0):
     save(fig, "F4_judges")
 
 
+W7_POLICIES = ["CORAL", "CORAL-VAL", "BAYES-HOME", "RILEY-SIZE", "BAYES-FLAT", "BAYES-MATCHED", "CAB"]
+W7_COLOR = {"CAB": "#2a78d6", "CORAL": "#eb6834", "CORAL-VAL": "#1baf7a", "BAYES-HOME": "#eda100",
+            "RILEY-SIZE": "#e87ba4", "BAYES-FLAT": "#008300", "BAYES-MATCHED": "#6250d6"}
+W7_MARK = {"CAB": "o", "CORAL": "s", "CORAL-VAL": "D", "BAYES-HOME": "^", "RILEY-SIZE": "v",
+           "BAYES-FLAT": "P", "BAYES-MATCHED": "X"}
+W7_LABEL = {"CAB": "CAB (certified)", "CORAL": "Domain adaptation, no labels",
+            "CORAL-VAL": "Domain adaptation, recalibrated", "BAYES-HOME": "Bayesian, vendor's validation as prior",
+            "RILEY-SIZE": "Sample-size rule, then estimates", "BAYES-FLAT": "Bayesian, flat prior (95%)",
+            "BAYES-MATCHED": "Bayesian, flat prior (CAB's strictness)"}
+W8_MON = {"MONITOR": ("Betting monitor (Ville)", "#2a78d6", "-"),
+          "CUSUM-20k": ("CUSUM detector (ARL 20,000)", "#eb6834", "-"),
+          "CHECK-TEST": ("Repeated tests, uncorrected", "#1baf7a", (0, (4, 2))),
+          "CHECK-POINT": ("Point-estimate checks", "#eda100", (0, (1, 1.5)))}
+
+
+def f5_comparators():
+    w7 = pd.concat([pd.read_csv(E.OUT / f"W7_runs_{t}.csv") for t in E.TARGETS])
+    cab = runs("E3")
+    cab = cab[cab.policy == "CAB"][["policy", "target", "finding", "unsafe_cohort"]]
+    r = pd.concat([w7[["policy", "target", "finding", "unsafe_cohort"]], cab])
+    r["unsafe_cohort"] = r.unsafe_cohort.astype(float)
+    t0 = per_transfer(r)
+    fig, ax = plt.subplots(figsize=(FULL_W, 66 * MM))
+    rng = np.random.default_rng(1)
+    for i, pol in enumerate(W7_POLICIES):
+        u = t0[t0.policy == pol].unsafe.to_numpy()
+        ax.scatter(u, i + rng.uniform(-0.18, 0.18, len(u)), s=14, marker=W7_MARK[pol],
+                   facecolor=W7_COLOR[pol], edgecolor="white", linewidth=0.5, zorder=3)
+        ax.plot([u.mean()] * 2, [i - 0.3, i + 0.3], color=INK, lw=1.6, zorder=4)
+        ax.text(1.03, i, f"mean {u.mean():.1%}  ·  {int((u > E.ALPHA).sum())} of {len(u)} over 5%",
+                va="center", fontsize=7, color=INK2, transform=ax.get_yaxis_transform())
+    ax.axvline(E.ALPHA, color=INK2, lw=0.8, ls=(0, (3, 2)), zorder=2)
+    ax.text(E.ALPHA + 0.008, len(W7_POLICIES) - 0.45, "α = 5%", fontsize=7, color=INK2)
+    ax.set_yticks(range(len(W7_POLICIES)), [W7_LABEL[p] for p in W7_POLICIES])
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.6, len(W7_POLICIES) - 0.3)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    ax.set_xlabel("Share of runs that switched on an unsafe finding (whole cohort; per transfer, all budgets)")
+    ax.grid(axis="y", visible=False)
+    ax.set_title("Stronger comparators across the same 31 transfers (tick: mean)", pad=8)
+    save(fig, "F5_comparators")
+
+
+def f6_monitoring():
+    r = pd.read_csv(E.OUT / "W8long_runs.csv")
+    r = r[(r.remedy != "BLOCK")]
+    r = r[~r.unsafe_a.astype(bool)]
+    t_pre = 2000
+    safe = r[~r.unsafe_b.astype(bool)]
+    drift = r[(r.site_b != r.site_a) & r.unsafe_b.astype(bool)]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(FULL_W, 62 * MM), gridspec_kw={"width_ratios": [1, 1.5]})
+    mons = list(W8_MON)
+    fa = [(safe[m] >= 0).mean() for m in mons]
+    y = np.arange(len(mons))[::-1]
+    a1.barh(y, fa, height=0.55, color=[W8_MON[m][1] for m in mons], zorder=3)
+    for yy, v in zip(y, fa):
+        a1.text(min(v, 0.78) + 0.02, yy, f"{v:.1%}", va="center", fontsize=7, color=INK)
+    a1.set_yticks(y, [W8_MON[m][0] for m in mons], fontsize=7)
+    a1.set_xlim(0, 1)
+    a1.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    a1.set_xlabel("Safe deployments with any alarm\n(18,000 audits)")
+    a1.grid(axis="y", visible=False)
+    a1.set_title("False alarms", loc="left")
+    d = np.arange(0, 16001, 50)
+    for m in ["MONITOR", "CUSUM-20k", "CHECK-TEST", "CHECK-POINT"]:
+        delay = (drift[m] - t_pre + 1).where(drift[m] >= t_pre).to_numpy()
+        curve = [(delay <= x).mean() for x in d]
+        a2.plot(d, curve, color=W8_MON[m][1], ls=W8_MON[m][2], lw=2, label=W8_MON[m][0])
+    a2.set_xlim(0, 16000)
+    a2.set_ylim(0, 1)
+    a2.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    a2.set_xticks([0, 4000, 8000, 12000, 16000], ["0", "4k", "8k", "12k", "16k"])
+    a2.set_xlabel("Audits after the population changed")
+    a2.set_ylabel("Drifts to an unsafe population detected")
+    a2.set_title(f"Detection ({len(drift):,} runs, {drift.drop_duplicates(['site_a', 'finding', 'site_b']).shape[0]} scenarios)",
+                 loc="left")
+    a2.legend(frameon=False, fontsize=6.8, loc="lower right", bbox_to_anchor=(1, 0.12))
+    fig.tight_layout(w_pad=2.5)
+    save(fig, "F6_monitoring")
+
+
 def main():
     style()
     all_runs = {s: runs(tag) for s, tag in SEEDS.items()}
@@ -218,6 +303,8 @@ def main():
     f2_decisions(all_runs[0])
     f3_labels(e5)
     f4_judges(all_runs[0])
+    f5_comparators()
+    f6_monitoring()
 
 
 if __name__ == "__main__":
