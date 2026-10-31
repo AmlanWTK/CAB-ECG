@@ -1,7 +1,7 @@
 # Analysis plan: multi-hospital sepsis transfer study (WP3, WP9)
 
-Draft 1, 2026-10-30 (draft 1: false-alert limit and recording thresholds decided; monitoring
-added). To be fixed and dated before any model is run on the full eICU-CRD or
+Draft 1, 2026-10-30, updated 2026-10-31 (false-alert limit and recording thresholds decided;
+monitoring added; monitoring guarantee and label-check ranges confirmed). To be fixed and dated before any model is run on the full eICU-CRD or
 MIMIC-IV data. Items marked **[decide]** are open; items marked **[from counts]** may be set after
 looking at cohort sizes and septic counts per hospital, which say nothing about model performance.
 Any change after the first full run is listed in the paper as a deviation.
@@ -29,7 +29,7 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
 - Suspected infection, primary ("relaxed"): any non-screening culture and any systemic antibiotic
   order, paired 72 h / 24 h. Sensitivity analysis: the Challenge's own rule (blood culture, IV
   antibiotic course of at least 72 h) on MIMIC-IV.
-- Label check before any model is run (`notes/label_check.md`, fixed 2026-10-31): MIMIC-IV
+- Label check before any model is run (`notes/label_check.md`, ranges confirmed 2026-10-31): MIMIC-IV
   under the Challenge rule within 5-13% septic (Challenge hospital A, the same hospital in
   earlier years: 8.8%); the relaxed rule at least as high and mostly containing the Challenge
   rule's cases; eICU hospitals passing the recording check within 3-15%; SOFA coverage close to
@@ -113,9 +113,10 @@ second training seed; eICU hospitals that fail the recording check, reported sep
 - Audits: every stay, with the Sepsis-3 label computed from the record (no chart review), so no
   enrichment is needed. CUSUM e-detector (average time to a false alarm at least 5,000 and 20,000
   stays) as a secondary analysis.
-- **[decide]** confirm the probability of any false alarm as the guarantee. On ECG it found more
-  drifts, sooner, than the CUSUM detector (87% vs 79-81% within 16,000 audits;
-  `notes/wp8_design.md`).
+- Guarantee (decided 2026-10-31): the probability of any false alarm, at most 0.05, is primary;
+  CUSUM is secondary. On ECG the primary monitor found more drifts, sooner, than the CUSUM
+  detector (87% vs 79-81% within 16,000 audits; `notes/wp8_design.md`), and its promise is the
+  simpler one to state clinically.
 
 ## 12. Reporting
 
@@ -125,7 +126,7 @@ TRIPOD+AI checklist; code and this plan released with the paper; every deviation
 
 1. Targets: single hospitals or groups, once septic counts per hospital are known.
 2. Label budgets, once target sizes are known.
-3. Monitoring: confirm the type of false-alarm guarantee (section 11).
 
 Decided 2026-10-30: recording thresholds 20% / 10% (section 4); false-alert limit home + 0.05
-(section 6).
+(section 6). Decided 2026-10-31: label-check ranges as written (section 3); monitoring guarantee,
+probability of any false alarm at most 0.05, with CUSUM secondary (section 11).

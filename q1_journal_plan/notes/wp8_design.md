@@ -143,8 +143,8 @@ Reading:
 
 ## Open
 
-- Confirm the guarantee for the paper. ECG favours the probability of any false alarm (above),
-  which is also simpler to state clinically.
+- Guarantee confirmed 2026-10-31: the probability of any false alarm (Ville, at most 0.05) is
+  primary for sepsis; CUSUM-ARL is a secondary analysis.
 - Sepsis: patient-level criteria mean an audit is a whole stay. The MIMIC-IV temporal split
   (earlier anchor-year groups as A, later as B) is the planned test.
 - References checked 2026-10-31:
@@ -152,4 +152,5 @@ Reading:
     Soc Series B. 2024;86(1):1-27. doi:10.1093/jrsssb/qkad009
   - Shin J, Ramdas A, Rinaldo A. E-detectors: a nonparametric framework for sequential change
     detection. New Engl J Stat Data Sci. 2023:229-260. doi:10.51387/23-NEJSDS51
-  - Still to add: Ville J. Etude critique de la notion de collectif. Gauthier-Villars; 1939.
+  - Ville J. Etude critique de la notion de collectif. Gauthier-Villars; 1939 (book, no DOI;
+    reference E15 in the ECG draft).

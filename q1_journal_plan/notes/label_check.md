@@ -33,7 +33,7 @@ On the demos (too small to judge; for orientation only): MIMIC-IV demo, Challeng
 
 ## Checks, fixed in advance
 
-Run on the first full extraction, before any model is trained.
+Ranges confirmed 2026-10-31. Run on the first full extraction, before any model is trained.
 
 1. **MIMIC-IV, Challenge definition.** The share of cohort stays labelled septic should be within
    5-13%, around hospital A's 8.8%.
