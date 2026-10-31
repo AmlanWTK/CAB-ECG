@@ -30,7 +30,7 @@ Status: `todo`, `doing`, `done`, `blocked (reason)`.
 | WP0 | Access | PhysioNet credentialing (CITI course) and approved access to eICU-CRD v2.0 and MIMIC-IV. Only Amlan can do this. | blocked (user) |
 | WP1 | Sepsis-3 labels (shared rules in `code/sepsis3.py`; extractors for both demos; relaxed definition decided, `notes/sepsis_labels.md`) | One labelling code path for eICU and MIMIC-IV: suspected infection (cultures + antibiotics) and a SOFA rise of 2 or more, giving an onset hour per stay. Built and tested on the open demo datasets, checked against published prevalence once full access arrives. | done on demos; extractors ready for the full data (`code/bigtable.py`; 16 GB); label check fixed in advance (`notes/label_check.md`), waits on access |
 | WP2 | Hourly features | Same vital-sign and laboratory features as the chapter, built from eICU and MIMIC-IV, so a model can move between any two hospitals. | done on demos: Challenge-format tables (`code/challenge_format.py`); chapter pipeline runs end to end (`code/sepsis_dryrun.py`) |
-| WP3 | Multi-hospital transfer study | Hospitals in eICU with enough septic stays as sources and targets (hundreds of pairs), plus MIMIC-IV as a different health system and as a temporal split (train on early years, deploy on later years). Per-pair unsafe-activation rates for CAB and all comparators, and their distribution across pairs. | todo |
+| WP3 | Multi-hospital transfer study | Hospitals in eICU with enough septic stays as sources and targets (hundreds of pairs), plus MIMIC-IV as a different health system and as a temporal split (train on early years, deploy on later years). Per-pair unsafe-activation rates for CAB and all comparators, and their distribution across pairs. | doing: Challenge hospital B (Emory) added as an open external target; inputs checked against the Challenge's processing and target pipeline dry-run on B (`code/challenge_b.py`) |
 | WP4 | Clinician-facing criteria | Alerts per true case, alerts per bed-day, positive predictive value and lead time alongside sensitivity and false-alert rate. Targets set with an ICU clinician. | todo |
 | WP5 | Model-agnostic | Imported models of three kinds: gradient boosting (as in the chapter), logistic regression, a small recurrent or transformer model. | todo |
 | WP6 | Fewer labels | Prediction-powered inference using scores on unlabelled patients, a better split of the error budget between the stages, and sequential labelling that stops when evidence suffices. Must keep the guarantee; shows labels saved against the chapter's gate. | done on ECG, negative: no saving from score-steered labelling with an exact guarantee (`notes/wp6_design.md`); revisit on sepsis with other signals |
@@ -62,6 +62,7 @@ Check each journal's current quartile in Scimago or JCR for the subject category
 | eICU-CRD Demo v2.0.1 | open (ODbL 1.0) | 130.4 MB zip, 20 hospitals | WP1/WP2 development |
 | eICU-CRD v2.0 | credentialed | about 200,000 ICU admissions, 208 hospitals | WP3 |
 | MIMIC-IV | credentialed | | WP3, WP8 |
+| PhysioNet/CinC Challenge 2019, hospital B (Emory) | open (CC BY 4.0) | 20,000 patients; already in `data/sepsis2019` | WP3 external target; hospital A for the harmonisation check |
 
 Datasets go in `data/` (git-ignored), as for the chapter.
 

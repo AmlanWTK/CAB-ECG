@@ -45,6 +45,17 @@ Ranges confirmed 2026-10-31. Run on the first full extraction, before any model 
 4. **Coverage.** The share of stay-hours with each SOFA component measured should be close to the
    demo's (eICU: cardiovascular about 85%, renal about 70%; respiration, coagulation and liver
    2-5%), and onset hours should not be concentrated at the earliest allowed hour.
+5. **Inputs against the Challenge's processing** (`code/challenge_b.py`, added 2026-10-31).
+   For each of the 36 inputs, our MIMIC-IV extraction is compared with Challenge hospital A (the
+   same hospital, earlier years): a variable is flagged if its share of stay-hours measured
+   differs by more than 2x, or its median by more than half of A's interquartile range. On the
+   demo 4 of 36 were flagged: EtCO2 (1.7% measured; the Challenge left it empty at A), SaO2
+   (1.4% vs 5.0%), TroponinI (MIMIC-IV mostly records troponin T) and FiO2 (median 0.40 vs
+   0.50, at the edge of A's IQR). On the full data each flag is either explained (a real
+   difference between the eras, or a variable the Challenge did not supply) or traced to the
+   item lists and fixed. eICU is shown for information: it differs from A in blood gases and
+   several labs, as hospital B also does, so those gaps are a site difference, not a fixed
+   criterion.
 
 If a check fails, the extraction is investigated (definitions, item lists, units, time windows)
 and the cause and fix are recorded in `notes/sepsis_labels.md` before anything else is run. The

@@ -58,6 +58,10 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
     Challenge-rule labels (MIMIC-IV and eICU, `--definition challenge`), and are judged on B's
     own labels. They are reported with the Challenge-rule sensitivity analysis, not the primary.
   - The eICU recording check does not apply to B (the Challenge organisers built its labels).
+  - Harmonisation (`code/challenge_b.py`, `notes/label_check.md` check 5): our MIMIC-IV inputs
+    are compared with hospital A's, so that a transfer to B measures B's patients rather than
+    differences between our extraction and the Challenge's processing. Demo dry run: the
+    target side of the pipeline runs on B.
   - Hospital A (Beth Israel, the MIMIC-IV hospital in earlier years) is not an external target;
     it may serve as a check of MIMIC-IV labels over time. Hospital C was never released.
 
