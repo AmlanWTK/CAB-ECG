@@ -10,6 +10,7 @@ criterion), then opens the ward monitor. Writes outputs/sepsis/figures/fig_app_g
 fig_app_ward.png (main panel only, 2x resolution).
 """
 
+import sys
 import time
 from pathlib import Path
 
@@ -21,6 +22,13 @@ FIG = ROOT / "outputs" / "sepsis" / "figures"
 URL = "http://localhost:8501"
 SCALE = 2
 W, H = 1440, 2300
+# --springer: a narrower window, so the app's text is larger relative to Springer's 117 mm text
+# block, and each figure cropped to its key panel (the decision, evidence and simulation check;
+# the ward table and patient view). Written to outputs/sepsis/figures_springer/.
+SPRINGER = "--springer" in sys.argv
+if SPRINGER:
+    FIG = ROOT / "outputs" / "sepsis" / "figures_springer"
+    W, H = 1100, 3000
 
 
 def idle(pg):
@@ -29,13 +37,13 @@ def idle(pg):
     time.sleep(3)
 
 
-def crop_main(png, out, main_box, bottom_box):
-    """Keep the main content column, from its top down to the given element's bottom edge."""
+def crop_main(png, out, main_box, bottom_box, top_box=None):
+    """Keep the main content column, from its top (or top_box's top) down to bottom_box's bottom."""
     im = Image.open(png)
     pad = 16
     left = int(main_box["x"]) * SCALE
     right = int(main_box["x"] + main_box["width"] + pad) * SCALE
-    top = int(main_box["y"] + 40) * SCALE
+    top = int((top_box["y"] - pad) if top_box else (main_box["y"] + 40)) * SCALE
     bottom = int(bottom_box["y"] + bottom_box["height"] + pad) * SCALE
     im.crop((max(left, 0), top, min(right, im.width), min(bottom, im.height))).save(out, dpi=(300, 300))
     print(f"wrote {out.relative_to(ROOT)}")
@@ -53,13 +61,15 @@ def main():
         pg.screenshot(path=str(tmp))
         main = pg.locator("[data-testid=stMainBlockContainer]").bounding_box()
         crop_main(tmp, FIG / "fig_app_gate.png", main,
-                  pg.locator("[data-testid=stExpander]").last.bounding_box())
+                  pg.locator("[data-testid=stExpander]").last.bounding_box(),
+                  pg.locator(".decision").first.bounding_box() if SPRINGER else None)
         pg.get_by_text("Ward monitor", exact=True).click()
         idle(pg)
         pg.screenshot(path=str(tmp))
         main = pg.locator("[data-testid=stMainBlockContainer]").bounding_box()
         crop_main(tmp, FIG / "fig_app_ward.png", main,
-                  pg.locator("[data-testid=stVegaLiteChart]").first.bounding_box())
+                  pg.locator("[data-testid=stVegaLiteChart]").first.bounding_box(),
+                  pg.locator("[data-testid=stMetric]").first.bounding_box() if SPRINGER else None)
         b.close()
     tmp.unlink()
 

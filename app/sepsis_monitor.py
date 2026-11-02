@@ -210,7 +210,8 @@ def page_gate(src, tgt):
             "Non-septic alerted": f"{s['alerted']}/{s['nonseptic_n']} ({s['fa_observed']:.1%})",
             "Upper bound": f"{s['fa_upper_bound']:.1%}" + (" ✅" if s["fa_ok"] else " ❌"),
             "Result": "✅ passes" if s["passed"] else "❌ fails"})
-    st.dataframe(pd.DataFrame(rows).fillna(""), hide_index=True, width="stretch")
+    # a plain table wraps its cells to the page width, so every column stays visible
+    st.table(pd.DataFrame(rows).fillna("").set_index("Option"))
     st.caption(f"Requirements: sensitivity ≥ {dep['s_star']:.0%} and non-septic alerted ≤ "
                f"{dep['f_star']:.1%}. A bound is the one-sided exact (Clopper–Pearson) limit at "
                f"level α/4. Keep and Calibrate use all labelled patients; Adapt is fitted on one half "

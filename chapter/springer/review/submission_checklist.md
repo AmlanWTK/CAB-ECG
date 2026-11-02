@@ -5,7 +5,7 @@
 | Section | Status |
 |---|---|
 | Front matter (title, authors, affiliation, e-mails, keywords) | Draft; confirm names and affiliation |
-| Abstract | Final (2026-11-02), 284 words, figures verified |
+| Abstract | Final (2026-11-02), 290 words, figures verified |
 | 1 Introduction | Final (2026-11-01), claims verified (`verification_introduction.md`) |
 | 2 Background and Related Work | Final (2026-11-02), shared α/4 lemma reviewed (`verification_section2.md`) |
 | 3 Materials and Methods | Final (2026-11-02); three review rounds plus cross-check corrections (`response_section3.md`, `audit_sections3_4.md`) |
@@ -37,9 +37,9 @@
       Risk-Controlling Prediction Sets).
 - [ ] Abstract, Results, Discussion and Conclusion: a detection may come up to 3 h after onset; never imply every detection is a warning before onset.
 - [ ] "Correct remedy" is an evaluation reference: say so wherever Section 4 reports it.
-- [ ] Redraw the data figures at Springer's text width (about 117 mm, not 174 mm) so their labels stay at least 7 pt after placement.
+- [x] Data figures redrawn at Springer's 117 mm text width (`code/sepsis_figures.py --springer`, written to `outputs/sepsis/figures_springer/`); Fig. 1 redesigned for the narrow page.
 - [ ] Final manuscript-wide pass: Abstract, Introduction, Discussion, Conclusion and limitations match the revised results (empirical vs theoretical, detections after onset, with-replacement simulations, correct remedy as reference).
-- [ ] Figs. 7 and 8 (app screenshots) are dense at Springer's text width: consider cropping each to its key panel (evidence table and simulation check; ward table and patient view) so text stays readable.
+- [x] Figs. 7 and 8 retaken in a 1,100-pixel window and cropped to their key panels (`scripts/app_screenshots.py --springer`); the gate's evidence table now wraps so every column shows.
 - [ ] Commit the app wording change ("switch on" → "deploy", "proves" → "certifies", bound column headers) with the chapter.
 - [ ] Keep three kinds of evidence distinct everywhere: the theoretical guarantee (theorem, under A1–A3), the certification decision (the exact tests on one local sample), and the retrospective evaluation (performance on patients excluded from the gate's decisions).
 - [ ] Turnitin similarity below 18%.

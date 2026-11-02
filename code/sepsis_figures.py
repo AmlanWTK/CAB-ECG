@@ -20,6 +20,8 @@ Run from the repository root:
 Writes outputs/sepsis/figures/.
 """
 
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -34,6 +36,7 @@ SEP = REPO / "outputs" / "sepsis"
 FIG = SEP / "figures"
 MM = 1 / 25.4
 FULL_W = 174 * MM
+NARROW = False   # True for Springer's 117 mm text block (--springer): shorter titles, shared axis labels
 PRIMARY = (0.80, 0.05)
 SOURCE = "E3mac100"   # the final 100-repeat run, all on one machine
 
@@ -64,6 +67,8 @@ LOCAL_C, IMPORTED_C = "#2a78d6", "#eb6834"
 
 def direction_title(d):
     s, t = d.split("->")
+    if NARROW:
+        return f"{SITE[s]} (control)" if s == t else f"{SITE[s]} \u2192 {SITE[t]}"
     if s == t:
         return f"{SITE[s]} \u2192 {SITE[t]} (control)"
     return f"{SITE[s]} model → {SITE[t]}"
@@ -89,6 +94,12 @@ def save(fig, name):
     fig.savefig(FIG / f"{name}.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
     print(f"  wrote figures/{name}.pdf and .png")
+
+
+def shared_xlabel(ax_left, label, y=-0.2):
+    """One x-axis label centred under a row of two panels (narrow figures)."""
+    ax_left.set_xlabel(label)
+    ax_left.xaxis.set_label_coords(1.06, y)
 
 
 def fmt_n(n):
@@ -175,6 +186,80 @@ def fig_workflow():
     save(fig, "fig_workflow")
 
 
+def fig_workflow_narrow():
+    """The workflow redrawn for Springer's 117 mm text block: same content, narrower boxes,
+    outcomes in a column on the right, text at 6.5-7.4 pt at the printed size."""
+    W, H = 117, 110
+    fig, ax = plt.subplots(figsize=(W * MM, H * MM))
+    ax.set_xlim(0, W); ax.set_ylim(0, H); ax.axis("off")
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+    def box(x, y, w, h, title, body, face, edge=MUTED, tc=INK, bc=INK2):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.4",
+                                    fc=face, ec=edge, lw=0.7))
+        ax.text(x + 2, y + h - 2, title, fontsize=7.2, weight="bold", color=tc, va="top")
+        if body:
+            ax.text(x + 2, y + h - 6.6, body, fontsize=6.5, color=bc, va="top", linespacing=1.35)
+
+    def arrow(x0, y0, x1, y1):
+        ax.annotate("", (x1, y1), (x0, y0), arrowprops=dict(arrowstyle="-|>", color=INK2, lw=0.7,
+                                                             shrinkA=0, shrinkB=0, mutation_scale=6))
+
+    def note(x, y, s, ha="center"):
+        ax.text(x, y, s, fontsize=6.2, color=INK2, ha=ha, va="center", style="italic",
+                bbox=dict(fc=SURFACE, ec="none", pad=0.3), zorder=5, linespacing=1.15)
+
+    soft = "#f4f3ef"
+    box(2, 84, 55, 24, "Fixed before any local label",
+        "Imported model and vendor\n"
+        "threshold $\\tau_{home}$\n"
+        "Sensitivity target $s^*$\n"
+        "False-alert limit $f^* = F_{home} + m$\n"
+        "Error level $\\alpha$; each test at $\\alpha/4$", soft)
+    box(61, 84, 54, 24, "Label n patients at random",
+        "Split within septic and non-septic\n"
+        "patients into a fit half (to adapt\n"
+        "the model) and a certification\n"
+        "half (to test it). Stage 1 uses\n"
+        "all n labels.", soft)
+    arrow(57, 96, 61, 96)
+    box(2, 46, 70, 30, "Stage 1: imported model, all n labels",
+        "1. Certify the highest threshold $\\tau$ whose\n"
+        "    sensitivity $\\geq s^*$ passes an exact test\n"
+        "    (fixed sequence from the sensitive end)\n"
+        "2. Test false alerts $\\leq f^*$ at $\\tau$\n"
+        "3. If both pass and $\\tau_{home} \\leq \\tau$:\n"
+        "    also test false alerts at $\\tau_{home}$",
+        "#eef4fc", edge="#86b6ef")
+    arrow(66, 84, 66, 76)
+    box(2, 11, 70, 27, "Stage 2: adapted model (if Stage 1 fails)",
+        "1. Fit on the fit half: extra boosting, leaf\n"
+        "    refit, or both (chosen by AUROC on an\n"
+        "    early-stopping part of the fit half)\n"
+        "2. On the certification half: certify $\\tau_A$\n"
+        "    and test false alerts at $\\tau_A$",
+        "#e7eef8", edge="#2a78d6")
+    arrow(30, 46, 30, 38)
+    note(31.5, 42, "a test at $\\tau$ fails", ha="left")
+    out = [("KEEP", 63, "vendor\nthreshold"), ("CALIBRATE", 46, "new threshold $\\tau$"),
+           ("ADAPT", 25, "adapted model,\nthreshold $\\tau_A$"), ("BLOCK", 9, "not deployed;\nusual care")]
+    for rem, y, txt in out:
+        face = REMEDY_COLOR[rem]
+        tc = SURFACE if rem in ("CALIBRATE", "ADAPT") else INK
+        box(87, y, 28, 14, rem.title(), txt, face, edge=face, tc=tc, bc=tc)
+    arrow(72, 69, 87, 69.5); note(79.5, 74, "all three\npass")
+    arrow(72, 53, 87, 52.5); note(79.5, 57.5, "tests at\n$\\tau$ pass")
+    arrow(72, 31, 87, 31.5); note(79.5, 35.5, "both\npass")
+    arrow(72, 16, 87, 15.5); note(79.5, 20, "either\nfails")
+    ax.text(2, 1.5, "Guarantee, under the assumptions of Section 3.5: P(deploying a configuration\n"
+                    "with sensitivity $< s^*$ or false-alert rate $> f^*$) $\\leq 4 \\times \\alpha/4 = \\alpha$.",
+            fontsize=6.5, color=INK, va="bottom", linespacing=1.35)
+    fig.savefig(FIG / "fig_workflow.pdf")
+    fig.savefig(FIG / "fig_workflow.png", dpi=300)
+    plt.close(fig)
+    print("  wrote figures/fig_workflow.pdf and .png (narrow)")
+
+
 # ----------------------------------------------------------------------------------------------
 def fig1_transfer(ci):
     metrics = [("AUROC_hourly", "AUROC (hourly)"), ("utility", "Normalised utility"),
@@ -200,7 +285,7 @@ def fig1_transfer(ci):
         ax.set_ylim(-0.6, len(metrics) - 0.4)
         ax.grid(axis="y", visible=False)
         ax.set_xlabel("Value (0–1)")
-        ax.set_title(f"At {SITE[tgt]}: own model vs {SITE[src]} model", pad=6)
+        ax.set_title(f"At {SITE[tgt]}" if NARROW else f"At {SITE[tgt]}: own model vs {SITE[src]} model", pad=6)
     handles = [Line2D([], [], marker="o", ls="", color=LOCAL_C, ms=5, label="Local model (trained at this hospital)"),
                Line2D([], [], marker="s", ls="", color=IMPORTED_C, ms=5, label="Imported model, unchanged")]
     fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.2))
@@ -231,12 +316,16 @@ def fig2_cab_decisions(runs, oracle):
         o = oracle[(oracle.direction == d) & (oracle.s_star == PRIMARY[0]) & (oracle.margin == PRIMARY[1])]
         right = o.oracle_remedy.iloc[0].replace("|", " or ").title() if len(o) else "?"
         ax.set_title(direction_title(d), pad=14)
-        ax.text(0, 1.015, f"Correct remedy (full data): {right}", transform=ax.transAxes,
+        ax.text(0, 1.015, f"Correct remedy: {right}" if NARROW else f"Correct remedy (full data): {right}",
+                transform=ax.transAxes,
                 fontsize=7, color=INK2, va="bottom")
     for ax in axes[:, 0]:
         ax.set_ylabel("Share of runs (%)")
-    for ax in axes[1, :]:
-        ax.set_xlabel("Labelled patients at the target hospital")
+    if NARROW:
+        shared_xlabel(axes[1, 0], "Labelled patients at the receiving hospital", y=-0.17)
+    else:
+        for ax in axes[1, :]:
+            ax.set_xlabel("Labelled patients at the target hospital")
     plt.rcParams["hatch.color"] = "#b8b7b0"
     handles = [Patch(facecolor=REMEDY_COLOR[r], edgecolor=SURFACE, hatch="////" if r == "BLOCK" else None,
                      label=REMEDY_LABEL[r]) for r in REMEDY_ORDER]
@@ -262,7 +351,7 @@ def fig3_unsafe(summ):
         for pol, s in series.items():
             groups.setdefault(s, []).append(POLICY_SHORT[pol])
         same = [g for g in groups.values() if len(g) > 1]
-        note = "; ".join(", ".join(g) for g in same)
+        note = "" if NARROW else "; ".join(", ".join(g) for g in same)   # narrow: in the caption
         ax.text(0, 1.015, f"Overlapping lines: {note}" if note else "", transform=ax.transAxes,
                 fontsize=6.8, color=INK2, va="bottom")
         for pol in POLICY_ORDER[::-1]:
@@ -275,11 +364,14 @@ def fig3_unsafe(summ):
         ax.set_xlim(-0.3, len(budgets) - 0.7)
         ax.set_ylim(-3, 103)
         ax.set_yticks([0, 25, 50, 75, 100])
-        ax.set_title(direction_title(d), pad=14)
+        ax.set_title(direction_title(d), pad=6 if NARROW else 14)
     for ax in axes[:, 0]:
         ax.set_ylabel("Runs that deployed an\nunsafe configuration (%)")
-    for ax in axes[1, :]:
-        ax.set_xlabel("Labelled patients at the target hospital")
+    if NARROW:
+        shared_xlabel(axes[1, 0], "Labelled patients at the receiving hospital", y=-0.17)
+    else:
+        for ax in axes[1, :]:
+            ax.set_xlabel("Labelled patients at the target hospital")
     handles = [Line2D([], [], color=POLICY_COLOR[p], marker=POLICY_MARK[p], ms=4.5,
                       lw=2.2 if p == "CAB" else 1.2, label=POLICY_LABEL[p]) for p in POLICY_ORDER]
     handles.append(Line2D([], [], color=INK2, lw=0.8, ls=(0, (4, 3)), label="5% bound guaranteed for CAB"))
@@ -319,8 +411,9 @@ def fig5_baselines(summ):
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 58 * MM), sharey=True)
     y = np.arange(len(BASELINE_ORDER))[::-1]
     h = 0.36
-    for ax, col, title in [(axes[0], "unsafe", "Switched on an unsafe configuration"),
-                           (axes[1], "correct", "Chose the correct remedy")]:
+    titles = (("Unsafe deployment", "Correct remedy chosen") if NARROW else
+              ("Deployed an unsafe configuration", "Chose the correct remedy"))
+    for ax, col, title in [(axes[0], "unsafe", titles[0]), (axes[1], "correct", titles[1])]:
         for k, (grp, off) in enumerate([("cross-hospital", h / 2), ("home", -h / 2)]):
             for yi, pol in zip(y, BASELINE_ORDER):
                 v = g[col].get((pol, grp), np.nan)
@@ -332,11 +425,14 @@ def fig5_baselines(summ):
                 ax.barh(yi + off, v, height=h, color=GROUP_COLOR[grp], edgecolor=SURFACE, linewidth=0.8,
                         hatch="////" if grp == "home" else None)
                 ax.text(v + 1.5, yi + off, f"{v:.1f}%", va="center", fontsize=6.5, color=INK)
-        ax.set_xlim(0, 112)
+        ax.set_xlim(0, 124 if NARROW else 112)
         ax.set_xticks([0, 25, 50, 75, 100])
         ax.grid(axis="y", visible=False)
         ax.set_title(title, pad=6)
-        ax.set_xlabel("Mean share of runs, all criteria and budgets (%)")
+        if not NARROW:
+            ax.set_xlabel("Mean share of runs, all requirement pairs and budgets (%)")
+    if NARROW:
+        shared_xlabel(axes[0], "Mean share of runs (%), all requirement pairs and budgets", y=-0.14)
     axes[0].set_yticks(y, [BASELINE_LABEL[p] for p in BASELINE_ORDER])
     plt.rcParams["hatch.color"] = SURFACE
     handles = [Patch(facecolor=GROUP_COLOR["cross-hospital"], label="Imported from the other hospital"),
@@ -429,7 +525,7 @@ def fig8_tolerance(sim):
 def fig_labels_tolerance(an, sim):
     """(a) the label calculator; (b, c) approval at home by false-alert tolerance (E5 + E11)."""
     fig = plt.figure(figsize=(FULL_W, 60 * MM))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1, 1], wspace=0.32)
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1, 1], wspace=0.55 if NARROW else 0.32)
     ax = fig.add_subplot(gs[0])
     a = an[an.table == "septic"]
     colors = {0.75: "#86b6ef", 0.80: "#2a78d6", 0.85: "#104281"}
@@ -442,11 +538,11 @@ def fig_labels_tolerance(an, sim):
     ticks = [100, 200, 500, 1000, 2000, 5000]
     ax.set_yticks(ticks, [f"{v:,}" for v in ticks])
     ax.minorticks_off()
-    ax.set_xticks(sorted(100 * a.gap.unique()))
-    ax.set_xlabel("True sensitivity above target (points)")
+    ax.set_xticks([2, 5, 7.5, 10] if NARROW else sorted(100 * a.gap.unique()))
+    ax.set_xlabel("Sensitivity margin (points)" if NARROW else "True sensitivity above target (points)")
     ax.set_ylabel("Septic patients needed")
     ax.legend(frameon=False, loc="upper right", fontsize=6.8)
-    ax.set_title("(a) Labels to certify sensitivity", pad=6)
+    ax.set_title("(a) Labels to certify" if NARROW else "(a) Labels to certify sensitivity", pad=6)
     q = sim[np.isclose(sim.s_star, PRIMARY[0]) & np.isclose(sim.headroom, 0)].copy()
     q["approved"] = q.P_KEEP + q.P_CALIBRATE
     tol_c = {0.0: "#86b6ef", 0.05: "#2a78d6", 0.10: "#104281"}
@@ -460,16 +556,24 @@ def fig_labels_tolerance(an, sim):
             s = r[np.isclose(r.margin, m)].set_index("n_labelled").reindex(budgets)
             ax.plot(x, 100 * s.approved, marker=tol_m[round(m, 2)], color=tol_c[round(m, 2)], ms=4, lw=1.3,
                     mec=SURFACE, mew=0.6, label=f"+{100 * m:.0f} points")
-        ax.set_xticks(x, [fmt_n(int(n)) for n in budgets])
+        labels = [fmt_n(int(n)) for n in budgets]
+        if NARROW:   # every other budget, so the labels do not run together
+            labels = [lab if i % 2 == 0 else "" for i, lab in enumerate(labels)]
+        ax.set_xticks(x, labels)
         ax.set_ylim(-3, 103)
         ax.set_yticks([0, 25, 50, 75, 100])
         ax.set_xlabel("Labelled patients")
-        ax.set_title(f"({'bc'[k]}) {SITE[d[0]]}, home", pad=6)
+        ax.set_title(f"({'bc'[k]}) {SITE[d[0]]}" if NARROW else f"({'bc'[k]}) {SITE[d[0]]}, home", pad=6)
         if k == 0:
             ax.set_ylabel("Runs approved (%)")
         else:
             ax.set_yticklabels([])
-            ax.legend(frameon=False, loc="lower right", fontsize=6.8, title="Tolerance", title_fontsize=6.8)
+            if NARROW:   # below the panels, where it cannot cover the curves
+                fig.legend(*ax.get_legend_handles_labels(), loc="lower center", ncol=3, frameon=False,
+                           fontsize=6.8, title="False alerts tolerated above the home rate",
+                           title_fontsize=6.8, bbox_to_anchor=(0.6, -0.24))
+            else:
+                ax.legend(frameon=False, loc="lower right", fontsize=6.8, title="Tolerance", title_fontsize=6.8)
     save(fig, "fig_labels_tolerance")
 
 
@@ -533,6 +637,11 @@ def tables(e1, ci, summ, oracle):
 
 
 def main():
+    global FULL_W, FIG, NARROW
+    springer = "--springer" in sys.argv   # Springer's 117 mm text block, written to figures_springer/
+    if springer:
+        FULL_W, FIG, NARROW = 117 * MM, SEP / "figures_springer", True
+        FIG.mkdir(parents=True, exist_ok=True)
     style()
     ci = pd.read_csv(SEP / "E2_ci.csv")
     summ = pd.read_csv(SEP / f"{SOURCE}_summary.csv")
@@ -541,7 +650,7 @@ def main():
     oracle = pd.read_csv(SEP / f"{SOURCE}_oracle.csv")
     e1 = pd.read_csv(SEP / "E1_E2_results.csv") if (SEP / "E1_E2_results.csv").exists() else None
     print("Making figures ...")
-    fig_workflow()
+    fig_workflow_narrow() if springer else fig_workflow()
     fig1_transfer(ci)
     fig2_cab_decisions(runs, oracle)
     fig3_unsafe(summ)

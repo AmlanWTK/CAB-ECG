@@ -48,7 +48,7 @@ from build_docx import INLINE, SUBSCRIPT, borders, clean, omath  # noqa: E402
 TEMPLATE = HERE.parent / "springer_template" / "extracted" / "Author.dotm"
 BASE = HERE / "_base.docx"
 OUT = HERE / "sarkar.docx"
-FIGS = ROOT / "outputs" / "sepsis" / "figures"
+FIGS = ROOT / "outputs" / "sepsis" / "figures_springer"   # drawn for the 117 mm text block (sepsis_figures.py --springer)
 TEXT_WIDTH = Cm(11.7)        # the template's text block: 11906 - 2665 - 2608 twips
 FIG_MAX_HEIGHT = Cm(15.0)
 
