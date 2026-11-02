@@ -2,8 +2,8 @@
 
   fig_workflow         the CAB procedure as a flow chart (no data needed)
   fig1_transfer        imported vs local model at each hospital, with 95% bootstrap CIs (E2)
-  fig2_cab_decisions   what CAB switched on, by label budget, in each setting (E3mac100, primary criterion)
-  fig3_unsafe          share of runs that switched on an unsafe configuration, by policy and budget
+  fig2_cab_decisions   what CAB deployed, by label budget, in each setting (E3mac100, primary criterion)
+  fig3_unsafe          share of runs that deployed an unsafe configuration, by policy and budget
   fig4_overall         unsafe and silent-failure rates per policy over ALL settings, criteria, budgets
   fig5_baselines       CAB against practical alternatives: unsafe and correct decisions (E10)
   fig6_labels          septic patients needed to certify, by the model's margin over the target (E5)
@@ -160,7 +160,7 @@ def fig_workflow():
     arrow(58, 41, 58, 35)
     note(60, 38, "a test at $\\tau$ fails")
     out = [("KEEP", 84, "model and vendor threshold"), ("CALIBRATE", 60, "model, new threshold $\\tau$"),
-           ("ADAPT", 30, "adapted model, threshold $\\tau_A$"), ("BLOCK", 6, "nothing switched on;\nusual care")]
+           ("ADAPT", 30, "adapted model, threshold $\\tau_A$"), ("BLOCK", 6, "not deployed;\nusual care")]
     for rem, y, txt in out:
         face = REMEDY_COLOR[rem]
         tc = SURFACE if rem in ("CALIBRATE", "ADAPT") else INK
@@ -169,7 +169,7 @@ def fig_workflow():
     arrow(114, 56, 130, 67); note(121, 57.5, "tests at $\\tau$\npass", ha="center")
     arrow(114, 26, 130, 37); note(121, 27.5, "both\npass", ha="center")
     arrow(114, 13, 130, 13); note(121, 16.5, "either\nfails", ha="center")
-    ax.text(2, 0.5, "Guarantee: P(switching on a deployment with sensitivity $< s^*$ or false-alert rate $> f^*$) "
+    ax.text(2, 0.5, "Guarantee: P(deploying a configuration with sensitivity $< s^*$ or false-alert rate $> f^*$) "
                     "$\\leq 4 \\times \\alpha/4 = \\alpha$, for any shift and any n.",
             fontsize=6.6, color=INK, va="bottom")
     save(fig, "fig_workflow")
@@ -241,7 +241,7 @@ def fig2_cab_decisions(runs, oracle):
     handles = [Patch(facecolor=REMEDY_COLOR[r], edgecolor=SURFACE, hatch="////" if r == "BLOCK" else None,
                      label=REMEDY_LABEL[r]) for r in REMEDY_ORDER]
     fig.legend(handles=handles, loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, -0.07),
-               title="What CAB switched on:", title_fontsize=7.5, alignment="left")
+               title="What CAB deployed:", title_fontsize=7.5, alignment="left")
     fig.subplots_adjust(hspace=0.62, wspace=0.12)
     save(fig, "fig2_cab_decisions")
 
@@ -277,7 +277,7 @@ def fig3_unsafe(summ):
         ax.set_yticks([0, 25, 50, 75, 100])
         ax.set_title(direction_title(d), pad=14)
     for ax in axes[:, 0]:
-        ax.set_ylabel("Runs that switched on an\nunsafe configuration (%)")
+        ax.set_ylabel("Runs that deployed an\nunsafe configuration (%)")
     for ax in axes[1, :]:
         ax.set_xlabel("Labelled patients at the target hospital")
     handles = [Line2D([], [], color=POLICY_COLOR[p], marker=POLICY_MARK[p], ms=4.5,
@@ -387,7 +387,7 @@ def fig7_validity(val):
         ax.plot([i - 0.45, i + 0.45], [100 * a] * 2, color=INK2, lw=0.9, ls=(0, (4, 3)), zorder=2)
     ax.set_xticks(range(len(alphas)), [f"α = {a:g}" for a in alphas])
     ax.set_xlim(-0.55, len(alphas) - 0.45)
-    ax.set_ylabel("Runs that switched on an\nunsafe configuration (%)")
+    ax.set_ylabel("Runs that deployed an\nunsafe configuration (%)")
     ax.grid(axis="x", visible=False)
     ax.set_title("Measured unsafe rate of every setting (100 runs each) against the nominal level", pad=6)
     handles = [Line2D([], [], marker="o", ls="", color=GROUP_COLOR[g], ms=4, label=

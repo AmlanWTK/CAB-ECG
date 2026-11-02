@@ -1,0 +1,35 @@
+# References for the Springer chapter
+
+One entry per line: `key: entry`, in the book editors' reference style. The build numbers them in
+order of first citation (`[@key]` in the section files) and lists only those cited.
+
+singer2016: M. Singer, C. S. Deutschman, C. W. Seymour, et al., “The Third International Consensus Definitions for Sepsis and Septic Shock (Sepsis-3),” JAMA, vol. 315, no. 8, pp. 801–810, 2016.
+rudd2020: K. E. Rudd, S. C. Johnson, K. M. Agesa, et al., “Global, Regional, and National Sepsis Incidence and Mortality, 1990–2017: Analysis for the Global Burden of Disease Study,” The Lancet, vol. 395, no. 10219, pp. 200–211, 2020.
+seymour2017: C. W. Seymour, F. Gesten, H. C. Prescott, et al., “Time to Treatment and Mortality during Mandated Emergency Care for Sepsis,” New England Journal of Medicine, vol. 376, no. 23, pp. 2235–2244, 2017.
+finlayson2021: S. G. Finlayson, A. Subbaswamy, K. Singh, et al., “The Clinician and Dataset Shift in Artificial Intelligence,” New England Journal of Medicine, vol. 385, no. 3, pp. 283–286, 2021.
+subbaswamy2020: A. Subbaswamy and S. Saria, “From Development to Deployment: Dataset Shift, Causality, and Shift-Stable Models in Health AI,” Biostatistics, vol. 21, no. 2, pp. 345–352, 2020.
+wong2021: A. Wong, E. Otles, J. P. Donnelly, et al., “External Validation of a Widely Implemented Proprietary Sepsis Prediction Model in Hospitalized Patients,” JAMA Internal Medicine, vol. 181, no. 8, pp. 1065–1070, 2021.
+steyerberg2019: E. W. Steyerberg, “Clinical Prediction Models: A Practical Approach to Development, Validation, and Updating,” 2nd ed., Springer: Cham, Switzerland, 2019.
+vancalster2019: B. Van Calster, D. J. McLernon, M. van Smeden, et al., “Calibration: The Achilles Heel of Predictive Analytics,” BMC Medicine, vol. 17, art. 230, 2019.
+vergouwe2017: Y. Vergouwe, D. Nieboer, R. Oostenbrink, et al., “A Closed Testing Procedure to Select an Appropriate Method for Updating Prediction Models,” Statistics in Medicine, vol. 36, no. 28, pp. 4529–4539, 2017.
+angelopoulos2021: A. N. Angelopoulos, S. Bates, E. J. Candès, M. I. Jordan, and L. Lei, “Learn then Test: Calibrating Predictive Algorithms to Achieve Risk Control,” The Annals of Applied Statistics, vol. 19, no. 2, pp. 1641–1662, 2025.
+bates2021: S. Bates, A. Angelopoulos, L. Lei, J. Malik, and M. Jordan, “Distribution-Free, Risk-Controlling Prediction Sets,” Journal of the ACM, vol. 68, no. 6, art. 43, 2021.
+reyna2020: M. A. Reyna, C. S. Josef, R. Jeter, et al., “Early Prediction of Sepsis from Clinical Data: The PhysioNet/Computing in Cardiology Challenge 2019,” Critical Care Medicine, vol. 48, no. 2, pp. 210–217, 2020.
+rcp2017: Royal College of Physicians, “National Early Warning Score (NEWS) 2: Standardising the Assessment of Acute-Illness Severity in the NHS,” Royal College of Physicians: London, UK, 2017.
+adams2022: R. Adams, K. E. Henry, A. Sridharan, et al., “Prospective, Multi-Site Study of Patient Outcomes after Implementation of the TREWS Machine Learning-Based Early Warning System for Sepsis,” Nature Medicine, vol. 28, pp. 1455–1460, 2022.
+riley2021: R. D. Riley, T. P. A. Debray, G. S. Collins, et al., “Minimum Sample Size for External Validation of a Clinical Prediction Model with a Binary Outcome,” Statistics in Medicine, vol. 40, no. 19, pp. 4230–4251, 2021.
+saerens2002: M. Saerens, P. Latinne, and C. Decaestecker, “Adjusting the Outputs of a Classifier to New a Priori Probabilities: A Simple Procedure,” Neural Computation, vol. 14, no. 1, pp. 21–41, 2002.
+lipton2018: Z. C. Lipton, Y.-X. Wang, and A. J. Smola, “Detecting and Correcting for Label Shift with Black Box Predictors,” in Proc. the 35th International Conference on Machine Learning (ICML), Stockholm, Sweden, 2018, pp. 3122–3130.
+goldberger2000: A. L. Goldberger, L. A. N. Amaral, L. Glass, et al., “PhysioBank, PhysioToolkit, and PhysioNet: Components of a New Research Resource for Complex Physiologic Signals,” Circulation, vol. 101, no. 23, pp. e215–e220, 2000.
+ke2017: G. Ke, Q. Meng, T. Finley, et al., “LightGBM: A Highly Efficient Gradient Boosting Decision Tree,” in Proc. Advances in Neural Information Processing Systems 30 (NeurIPS), Long Beach, CA, USA, 2017, pp. 3146–3154.
+pollard2018: T. J. Pollard, A. E. W. Johnson, J. D. Raffa, et al., “The eICU Collaborative Research Database, a Freely Available Multi-Center Database for Critical Care Research,” Scientific Data, vol. 5, art. 180178, 2018.
+angelopoulos2023: A. N. Angelopoulos, S. Bates, C. Fannjiang, M. I. Jordan, and T. Zrnic, “Prediction-Powered Inference,” Science, vol. 382, no. 6671, pp. 669–674, 2023.
+wong2026: A. Wong, D. Currey, M. Schwinne, et al., “Multicenter Prospective Validation of an Updated Proprietary Sepsis Prediction Model,” JAMA Network Open, vol. 9, no. 2, art. e260181, 2026.
+kamran2024: F. Kamran, D. Tjandra, A. Heiler, et al., “Evaluation of Sepsis Prediction Models before Onset of Treatment,” NEJM AI, vol. 1, no. 3, 2024.
+moor2023: M. Moor, N. Bennett, D. Plečko, et al., “Predicting Sepsis Using Deep Learning across International Sites: A Retrospective Development and Validation Study,” eClinicalMedicine, vol. 62, art. 102124, 2023.
+angelopoulos2024: A. N. Angelopoulos, S. Bates, A. Fisch, L. Lei, and T. Schuster, “Conformal Risk Control,” in Proc. the 12th International Conference on Learning Representations (ICLR), Vienna, Austria, 2024.
+fda2024: U.S. Food and Drug Administration, “Marketing Submission Recommendations for a Predetermined Change Control Plan for Artificial Intelligence-Enabled Device Software Functions: Guidance for Industry and Food and Drug Administration Staff,” 2024 (current version August 2025), https://www.fda.gov/regulatory-information/search-fda-guidance-documents/marketing-submission-recommendations-predetermined-change-control-plan-artificial-intelligence, [Retrieved: October 2026].
+euaiact2024: European Parliament and Council of the European Union, “Regulation (EU) 2024/1689 Laying Down Harmonised Rules on Artificial Intelligence (Artificial Intelligence Act),” Official Journal of the European Union, L 2024/1689, 2024, https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng, [Retrieved: October 2026].
+euomnibus2026: European Parliament and Council of the European Union, “Regulation (EU) 2026/1744 Amending Regulation (EU) 2024/1689 (Digital Omnibus on AI),” Official Journal of the European Union, 24 July 2026, https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng, [Retrieved: October 2026].
+churpek2017: M. M. Churpek, A. Snyder, X. Han, et al., “Quick Sepsis-Related Organ Failure Assessment, Systemic Inflammatory Response Syndrome, and Early Warning Scores for Detecting Clinical Deterioration in Infected Patients outside the Intensive Care Unit,” American Journal of Respiratory and Critical Care Medicine, vol. 195, no. 7, pp. 906–911, 2017.
+shimodaira2000: H. Shimodaira, “Improving Predictive Inference under Covariate Shift by Weighting the Log-Likelihood Function,” Journal of Statistical Planning and Inference, vol. 90, no. 2, pp. 227–244, 2000.

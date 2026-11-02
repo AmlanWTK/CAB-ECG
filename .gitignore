@@ -56,3 +56,12 @@ env/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---- Springer chapter: publisher's template (download from Springer Nature) and generated copies ----
+chapter/springer_template/
+chapter/springer/_base.docx
+chapter/springer/*.pdf
+chapter/springer/review/*.docx
+chapter/springer/review/*.pdf
+chapter/sarkar.docx
+chapter/sarkar.pdf

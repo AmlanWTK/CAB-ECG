@@ -1,41 +1,24 @@
 # Calibrate, Adapt, or Block: A Statistically Certified Deployment Gate for Imported Sepsis Early-Warning Models
 
-Amlan Sarkar¹* and Md Tobibul Islam¹
+Amlan Sarkar*, Md Tobibul Islam
 
-¹ Department of Biomedical Engineering, Military Institute of Science and Technology (MIST), Dhaka, Bangladesh
+Department of Biomedical Engineering, Military Institute of Science and Technology, Bangladesh
 
-\* Corresponding author: amlansarkar738@gmail.com · tobibul.islam@bme.mist.ac.bd
+amlansarkar738@gmail.com, tobibul.islam@bme.mist.ac.bd
 
-> Draft 1, written from the committed results. Every number is traceable to `outputs/sepsis/` (see
-> the source notes in `chapter/abstract_draft.md` and the file named beside each table or figure).
-> Before submission:
-> - check every reference against the original;
-> - move the text into the Springer chapter template (single column, 10 pt);
-> - run it through Turnitin (the limit is below 18%).
-
----
+> Submission version for the Springer chapter, laid out to the editors' instructions (no Springer
+> template: Times New Roman 10 pt, single spacing, 1-inch margins, 15-20 pages). Every number is
+> traceable to `outputs/sepsis/`. Built by `chapter/build_docx.py` into `chapter/sarkar.docx`.
 
 ## Abstract
 
-**Background.** Hospitals increasingly use sepsis prediction models built at other institutions. These models often lose accuracy at the receiving site, and the receiving site has no principled way to decide whether to use the model as supplied, update it or reject it.
+Hospitals increasingly use sepsis prediction models built at other institutions, but these models often lose accuracy at the receiving site, and the receiving site has no principled way to decide whether to use a model as supplied, update it or reject it. This chapter presents CAB (Calibrate, Adapt, or Block), a deployment gate that uses a limited number of locally labelled patients to choose the least invasive acceptable remedy for an imported model, while bounding the probability of switching on a model that breaks safety requirements fixed in advance. CAB considers four options in a fixed order: keep the model, recalibrate its alert threshold, adapt it to local data, or block it. An option is switched on only if exact binomial tests certify its patient-level sensitivity and false-alert rate. We evaluated CAB on 40,336 intensive care patients from two US hospitals in the PhysioNet/CinC Challenge 2019 data, importing a gradient-boosted model trained at each hospital into the other hospital and into each of its two ICU types. CAB was compared with eleven alternatives over 250 to 12,000 labelled patients, nine safety criteria and 100 repetitions per setting. Imported models failed in direction-specific ways: sensitivity fell to 63% against an 80% target at one hospital, and false alerts doubled at the other. Uncertified alternatives switched on unsafe models in 18–100% of runs and conventional updating in 77–92%, whereas CAB did so in under 1% and stayed below the nominal level at error rates of 1%, 5% and 10%. CAB blocked an unrepairable model in every run from 250 labels, and certified the adapted model in 97% of runs at 12,000 labels. A closed-form calculator predicted the labels needed to within about 20%. Hospitals should therefore plan label collection, and their false-alert tolerance, before deployment.
 
-**Objective.** We set out to build a deployment gate that uses a limited number of locally labelled patients to choose the least invasive acceptable remedy for an imported model. The gate also bounds the probability of switching on a model that breaks safety requirements fixed in advance.
-
-**Methodology.** We used 40,336 intensive care patients from two US hospitals in the PhysioNet/CinC Challenge 2019 data. A gradient-boosted model trained at each hospital was imported into the other hospital, and into each of its two ICU types. The method, CAB (Calibrate, Adapt, or Block), considers four options in a fixed order: keep the model, recalibrate its alert threshold, adapt it to local data, or block it. An option is switched on only if exact binomial tests certify patient-level sensitivity and false-alert rate. CAB was compared with eleven alternatives, from direct deployment to classical statistical updating and point-estimate validation. The comparison used 250 to 12,000 labelled patients, nine safety criteria and 100 repetitions per setting.
-
-**Results.**
-- Imported models failed in direction-specific ways: sensitivity fell to 63% against an 80% target at one hospital, and false alerts doubled at the other.
-- The uncertified alternatives switched on unsafe models in 18–100% of runs, and conventional updating did so in 77–92%. CAB did so in under 1%, and stayed below the nominal level at error rates of 1%, 5% and 10%.
-- CAB blocked an unrepairable model in every run from 250 labels, and certified the adapted model in 97% of runs at 12,000 labels.
-- A closed-form calculator predicted the labels needed to within about 20%.
-
-**Conclusion.** A certified gate prevents almost all unsafe activations at a measurable cost in labels. Hospitals should plan label collection, and their false-alert tolerance, before deployment.
-
-**Keywords:** Sepsis early warning · Clinical decision support · Dataset shift · Model updating · Local validation · Statistical certification · Health informatics
+**Keywords:** Sepsis early warning, Dataset shift, Model updating, Local validation, Statistical certification, Clinical decision support
 
 ---
 
-## 1 Introduction
+## I. Introduction
 
 Sepsis is a dysregulated host response to infection that leads to organ dysfunction [1]. It remains a leading cause of death in intensive care, and each hour of delayed treatment worsens outcomes. Early-warning models that score a patient's risk every hour from routinely charted vital signs and laboratory values are therefore attractive.
 
@@ -63,23 +46,23 @@ CAB then tests the remedies in order of increasing intervention. It switches on 
 
 We evaluate CAB on the PhysioNet/CinC Challenge 2019 data [10]: two US hospitals, 40,336 ICU patients and six import scenarios. The evaluation includes a same-hospital control and 100 repeated samples per setting. The contributions are as follows:
 
-1. **A certified deployment gate.** It chooses among keep, recalibrate, adapt and block with a finite-sample bound on unsafe activation, and needs no model of the shift (Section 3.4 and the proof in Section 3.5).
-2. **A comparison with eleven alternatives** that hospitals use or that the literature recommends. These include classical closed-testing updating, point-estimate local validation, prevalence correction and unordered Learn-then-Test (Section 4).
-3. **A closed-form label calculator** that tells a hospital, before it starts labelling, roughly how many septic and non-septic patients certification will need (Section 4.5).
-4. **Practical findings** for hospitals and vendors. Blocking is a legitimate and frequent outcome. Typical validation samples are too small to certify anything. The hospital's false-alert tolerance, not the vendor's threshold headroom, decides how many labels are needed (Sections 4.6 and 4.7).
-5. **A prototype application** that runs the gate on a hospital's labels and then monitors patients hour by hour with whatever the gate switched on. It is built on the same code as the experiments (Section 5).
+1. **A certified deployment gate.** It chooses among keep, recalibrate, adapt and block with a finite-sample bound on unsafe activation, and needs no model of the shift (Sections III-D and III-E).
+2. **A comparison with eleven alternatives** that hospitals use or that the literature recommends. These include classical closed-testing updating, point-estimate local validation, prevalence correction and unordered Learn-then-Test (Section IV).
+3. **A closed-form label calculator** that tells a hospital, before it starts labelling, roughly how many septic and non-septic patients certification will need (Section IV-E).
+4. **Practical findings** for hospitals and vendors. Blocking is a legitimate and frequent outcome. Typical validation samples are too small to certify anything. The hospital's false-alert tolerance, not the vendor's threshold headroom, decides how many labels are needed (Sections IV-F and IV-G).
+5. **A prototype application** that runs the gate on a hospital's labels and then monitors patients hour by hour with whatever the gate switched on. It is built on the same code as the experiments (Section V).
 
 ---
 
-## 2 Background and Related Work
+## II. Background and Related Work
 
-### 2.1 Sepsis early warning and its transport
+### A. Sepsis early warning and its transport
 
 Rule-based bedside scores are widely used to flag deteriorating patients. Examples are the Systemic Inflammatory Response Syndrome (SIRS) criteria, the quick Sequential Organ Failure Assessment (qSOFA), the Modified Early Warning Score (MEWS) and the National Early Warning Score 2 (NEWS2) [11]. They are transparent and need no training data, but their discrimination for sepsis is modest.
 
 Machine-learning models trained on electronic health records do better at the hospital where they are built. The 2019 PhysioNet/Computing in Cardiology Challenge [10] made data from two hospitals openly available so that algorithms could be compared on the same footing. Its organisers deliberately held out a third hospital, and reported that performance fell there. Prospective deployment studies show that well-run sepsis alert systems can help [12]. External evaluations show that the same promise does not carry over automatically to new sites [4]. Newer versions have not removed the problem. A prospective study of an updated commercial sepsis model at four US health systems reported good discrimination overall, but wide differences between institutions, a low positive predictive value and a heavy alert load, and its authors advised every adopting hospital to validate the model locally [20]. Evaluation design also matters: a model looks much better when alerts raised after clinicians have already started sepsis care are counted as successes [21]. In ICU data from three countries, a deep-learning model lost discrimination when moved to another database and regained part of it after fine-tuning on a small share of the new site's patients [22]. None of these studies tells a hospital, before go-live, how likely its chosen configuration is to break its own requirements.
 
-### 2.2 Updating an imported model
+### B. Updating an imported model
 
 Clinical prediction research distinguishes a hierarchy of updates [5,6]:
 
@@ -92,7 +75,7 @@ Vergouwe and colleagues proposed a closed testing procedure that moves up this h
 
 These tools answer statistical questions about fit and precision. They do not bound the probability that the model finally put into use fails the hospital's own operating requirements. As our results show, that probability can be large.
 
-### 2.3 Distribution-free risk control
+### C. Distribution-free risk control
 
 Distribution-free predictive inference offers a different kind of guarantee. Risk-controlling prediction sets [9] and Learn-then-Test [8] calibrate a parameter of any black-box model, such as a threshold, so that a chosen risk is controlled with high probability. They need only the assumption that the calibration data are exchangeable with future data. Conformal risk control bounds the expected value of a monotone loss instead [23]. CAB needs the stronger, high-probability form, because a hospital decides once and lives with the result.
 
@@ -102,13 +85,13 @@ Learn-then-Test casts calibration as multiple hypothesis testing, and uses fixed
 2. a fixed order of remedies that reflects their cost to the hospital;
 3. an adapted model that must be fitted and certified on separate patients.
 
-### 2.4 Correcting for shift without labels
+### D. Correcting for shift without labels
 
 When the outcome rate differs between hospitals but the relation between features and outcome does not (label shift), predicted probabilities can be corrected using unlabelled target data [14,15]. Covariate-shift methods reweight source data instead. Both depend on assumptions about the type of shift that cannot be checked without labels.
 
 We include a prevalence correction as a comparator, to test whether such a correction is enough in this setting.
 
-### 2.5 Regulatory context
+### E. Regulatory context
 
 Regulators already expect the changes a hospital may need to be planned in advance. In the United States, the Food and Drug Administration's guidance on predetermined change control plans for AI-enabled device software lets a manufacturer obtain authorisation for specified future modifications, together with the methods used to develop, validate and implement them and an assessment of their impact [24]. In the European Union, the Artificial Intelligence Act treats AI that is a safety component of, or is itself, a medical device requiring third-party conformity assessment as high-risk [25]. For such systems, changes pre-determined by the provider at the initial assessment and recorded in the technical documentation do not count as a substantial modification (Article 43(4)), and providers must monitor performance after the system is on the market. A 2026 amendment moved the date from which these obligations apply to devices covered by Annex I to 2 August 2028 [26].
 
@@ -116,9 +99,9 @@ Both frameworks therefore reward a change protocol that is written down before d
 
 ---
 
-## 3 Materials and Methods
+## III. Materials and Methods
 
-### 3.1 Data and cohorts
+### A. Data and cohorts
 
 We used the training set of the PhysioNet/CinC Challenge 2019 [10,16]. It contains hourly records of ICU stays from two hospitals:
 
@@ -136,7 +119,7 @@ Table 1 describes the cohorts. Septic patients made up 8.8% of hospital A and 5.
 | Beth Israel (A) | 20,336 | 1,790 (8.8) | 65 (52–76) | 58.2 | 39 (25–47) | 790,215 |
 | Emory (B) | 20,000 | 1,142 (5.7) | 62 (50–72) | 53.7 | 38 (23–47) | 761,995 |
 
-### 3.2 Source models
+### B. Source models
 
 At each hospital we trained a LightGBM gradient-boosted tree model [17] to predict, hour by hour, whether a patient would become septic. Every feature uses only data available up to that hour:
 
@@ -148,30 +131,44 @@ The ICU-type indicators were deliberately left out, so that the model could not 
 
 These models play the role of the vendor's product. Each "vendor" also chooses its alert threshold on its own validation patients. For each sensitivity target s*, the vendor's threshold τ_home is the highest threshold whose sensitivity of at least s* passes a one-sided exact test at the 5% level on the home validation patients. The vendor's home false-alert rate at that threshold is F_home. For comparison, the four bedside scores were computed in modified form from the same hourly data, at their usual cut-offs.
 
-### 3.3 Alerting and safety criteria
+### C. Alerting and safety criteria
 
 The unit of safety is the patient, because a clinician responds to an alert about a patient, not to an hourly score. A threshold t turns a model's hourly scores into alerts:
 
 - A septic patient counts as **detected** if any hourly score in the window from 12 h before to 3 h after onset reaches t. This is the clinically useful window used by the Challenge's utility score.
 - A non-septic patient counts as **falsely alerted** if any hourly score during the stay reaches t.
 
-Sensitivity S(t) is the share of septic patients detected, and the false-alert rate F(t) is the share of non-septic patients falsely alerted. Both rates fall as t rises.
+Let w_i be the highest hourly score of septic patient i within the window, and v_j the highest hourly score of non-septic patient j during the stay. On a set of K septic and M non-septic patients, the sensitivity S(t) and the false-alert rate F(t) are the shares detected and falsely alerted:
+
+$$ S(t)=\frac{1}{K}\sum_{i=1}^{K}{\mathbf{1}[w_i \ge t]}, \qquad F(t)=\frac{1}{M}\sum_{j=1}^{M}{\mathbf{1}[v_j \ge t]} $$ (1)
+
+Both rates fall as t rises.
 
 Before any target label is seen, the receiving hospital fixes two safety requirements:
 
 - a sensitivity target s*;
 - a false-alert limit f* = F_home + m, where m is the extra false-alert rate the hospital is willing to accept over what the vendor achieved at home.
 
-A deployment (model, threshold) is **safe** if S ≥ s* and F ≤ f*. We studied nine criteria, s* ∈ {0.75, 0.80, 0.85} crossed with m ∈ {0, 0.05, 0.10}. The primary criterion is s* = 0.80 and m = 0.05. Blocking switches nothing on and is always safe by this definition. Its clinical cost is examined separately (Section 4.6).
+A deployment (model, threshold t) is **safe** if, on the target population,
 
-### 3.4 The CAB procedure
+$$ S(t) \ge s^{*} \quad \text{and} \quad F(t) \le f^{*}. $$ (2)
+
+We studied nine criteria, s* ∈ {0.75, 0.80, 0.85} crossed with m ∈ {0, 0.05, 0.10}. The primary criterion is s* = 0.80 and m = 0.05. Blocking switches nothing on and is always safe by this definition. Its clinical cost is examined separately (Section IV-F).
+
+### D. The CAB procedure
 
 Fig. 1 summarises the procedure and Algorithm 1 states it exactly. The hospital labels n patients drawn at random from its own population. Before any model is fitted, CAB divides these patients, within the septic and non-septic groups separately, into a fit half and a certification half. Let δ = α/4.
 
 Two building blocks are used:
 
-- **Threshold certification.** Given k labelled septic patients, sort their window-maximum scores from highest to lowest. Find the smallest number of detections d_min for which the exact binomial test of H0: S < s* rejects at level δ. Return the threshold that detects exactly d_min patients. This is the highest threshold whose sensitivity is certified, and it is the fixed-sequence form of Learn-then-Test [8]: thresholds are tested from the most sensitive end, and because sensitivity falls monotonically, the passing thresholds form a prefix.
-- **False-alert test.** Given m labelled non-septic patients and a threshold t, reject H0: F(t) > f* if the exact binomial probability of the observed number of false alerts or fewer is at most δ when the true rate is f*.
+- **Threshold certification.** Given K labelled septic patients, sort their window-maximum scores from highest to lowest. Find the smallest number of detections d_min for which the exact binomial test of H0: S < s* rejects at level δ. Return the threshold that detects exactly d_min patients. This is the highest threshold whose sensitivity is certified, and it is the fixed-sequence form of Learn-then-Test [8]: thresholds are tested from the most sensitive end, and because sensitivity falls monotonically, the passing thresholds form a prefix.
+- **False-alert test.** Given M labelled non-septic patients and a threshold t, reject H0: F(t) > f* if the exact binomial probability of the observed number of false alerts or fewer is at most δ when the true rate is f*.
+
+In symbols, with w_(1) ≥ … ≥ w_(K) the sorted window-maximum scores of the labelled septic patients and x(t) the number of labelled non-septic patients alerted at t, the certified threshold and the false-alert test are
+
+$$ d_{\min}=\min\{d : \Pr[\mathrm{Bin}(K,s^{*}) \ge d] \le \delta\}, \qquad \hat{\tau}=w_{(d_{\min})} $$ (3)
+
+$$ \text{reject } F(t)>f^{*} \text{ if } \Pr[\mathrm{Bin}(M,f^{*}) \le x(t)] \le \delta $$ (4)
 
 The gate then runs in two stages.
 
@@ -209,16 +206,16 @@ Output: KEEP (g0, τ_home), CALIBRATE (g0, τ), ADAPT (gA, τA) or BLOCK
  9  if τA exists and FALSE_ALERT_OK(gA, L_cert, τA):  return ADAPT (gA, τA)
 10  return BLOCK                                // usual care continues
 
-CERTIFY(g, S):  w(1) ≥ ... ≥ w(k) ← window-maximum scores of the k septic patients in S
-                d_min ← smallest d with P(Binomial(k, s*) ≥ d) ≤ δ
-                return w(d_min)   (none if d_min > k)
-FALSE_ALERT_OK(g, S, t):  x ← non-septic patients in S (of m) with a stay-maximum score ≥ t
-                return P(Binomial(m, f*) ≤ x) ≤ δ
+CERTIFY(g, S):  w(1) ≥ ... ≥ w(K) ← window-maximum scores of the K septic patients in S
+                d_min ← smallest d with P(Binomial(K, s*) ≥ d) ≤ δ
+                return w(d_min)   (none if d_min > K)
+FALSE_ALERT_OK(g, S, t):  x ← non-septic patients in S (of M) with a stay-maximum score ≥ t
+                return P(Binomial(M, f*) ≤ x) ≤ δ
 ```
 
 The order matters. A hospital prefers to keep a vendor model unchanged, because the vendor supports it and it is easier to govern. A threshold change is the next least intrusive option. A retrained model needs local validation and maintenance. CAB therefore always tries the cheapest acceptable option first.
 
-**Illustration.** Table 2 shows CAB's evidence in three real runs at the primary criterion (s* = 0.80, f* = home rate + 0.05), each drawn from the 100 repeats of Section 4.
+**Illustration.** Table 2 shows CAB's evidence in three real runs at the primary criterion (s* = 0.80, f* = home rate + 0.05), each drawn from the 100 repeats of Section IV.
 
 **A→B with 12,000 labels (672 septic patients).**
 - **Keep.** The imported model at the vendor's threshold detected 443 of the 672 labelled septic patients (65.9%). The exact lower bound of 61.7% is far below the target, so KEEP fails.
@@ -248,7 +245,7 @@ The order matters. A hospital prefers to keep a vendor model unchanged, because 
 | | Calibrate | all labels | 84/93 | 0.903 (0.812) | 686/907 | 0.756 (0.788) | 0.379 | no |
 | | Adapt | certification half | 43/46 | 0.935 (0.803) | 337/453 | 0.744 (0.789) | 0.379 | no → BLOCK |
 
-### 3.5 Statistical guarantee
+### E. Statistical guarantee
 
 **Theorem.** Assume the following:
 
@@ -256,9 +253,11 @@ The order matters. A hospital prefers to keep a vendor model unchanged, because 
 - **(A2)** The labels are correct.
 - **(A3)** The targets, the vendor's threshold and the imported model are fixed before labelling, and the adapted model uses only the fit half.
 
-Then, for any shift between the hospitals and any n, the probability that CAB switches on an unsafe deployment is at most α.
+Then, for any shift between the hospitals and any n,
 
-*Proof sketch.* The full proof is in the supplementary material.
+$$ \Pr[\text{CAB switches on an unsafe deployment}] \le 4\delta = \alpha. $$ (5)
+
+*Proof.* The argument has four steps.
 
 **Threshold certification errs with probability at most δ.** Let t₊ be the lowest threshold whose true sensitivity is below s*. This depends only on the population, not the sample. If the certified threshold is t₊ or higher, then, because detections can only fall as the threshold rises, the number of septic patients detected at t₊ is at least d_min. That count is binomial with a success probability below s*, so its chance of reaching d_min is at most δ.
 
@@ -270,15 +269,15 @@ Then, for any shift between the hospitals and any n, the probability that CAB sw
 
 **Stage 2 costs another 2δ.** The adapted model is a fixed function of the fit half, which is independent of the certification half, so the same two arguments apply.
 
-**Union bound.** At most one deployment is switched on, so the total probability of an unsafe deployment is at most 4δ = α. ∎
+**Union bound.** At most one deployment is switched on, so the total probability of an unsafe deployment is at most 4δ = α, which is (5). ∎
 
 The bound holds exactly for finite samples. It needs no model of the shift and no assumption that the model's probabilities are well calibrated.
 
-Three things are *not* guaranteed:
+Two things are *not* guaranteed:
 - that a safe remedy will be found when one exists, which is a matter of power and labels;
 - that the deployed model will remain safe if the population later drifts.
 
-### 3.6 Comparators
+### F. Comparators
 
 **Table 3.** The eleven comparators.
 
@@ -296,7 +295,7 @@ Three things are *not* guaranteed:
 | Certified | LTT-DIRECT | Learn-then-Test without CAB's order. The imported and the adapted model are both certified on the certification half, and the one with the lower false-alert rate is used. |
 | Certified | CERT-RECAL | CAB without the adapt stage (an ablation). |
 
-### 3.7 Experimental design
+### G. Experimental design
 
 **Scenarios.** Six import scenarios were studied:
 
@@ -321,7 +320,7 @@ In addition, each hospital's model was "imported" into its own hospital (A→A, 
 
 We also report clinical impact per 100 admissions. When CAB blocks, the hospital is assumed to fall back to modified NEWS2 at 5 or more.
 
-### 3.8 Label calculator
+### H. Label calculator
 
 Each CAB decision consists of two exact binomial tests at level δ. The labels needed therefore depend on two things: how far the model's true rates are from the targets on the safe side, which we call the gap, and the share of septic patients among those labelled.
 
@@ -329,19 +328,19 @@ For a given gap, the calculator finds the smallest number of septic patients for
 
 A hospital can use the calculator in advance, with the vendor's published operating curve as a guess for the gap. We checked its predictions against simulations of CAB's rule on resampled target patients.
 
-### 3.9 Prototype application
+### I. Prototype application
 
-The gate is implemented in a research prototype, *CAB Sepsis Monitor*, built on the same code as the experiments. It is described in Section 5.
+The gate is implemented in a research prototype, *CAB Sepsis Monitor*, built on the same code as the experiments. It is described in Section V.
 
-### 3.10 Implementation
+### J. Implementation
 
-The analysis is written in Python with LightGBM, NumPy, pandas, SciPy and scikit-learn. All final experiments ran on one computer, so that thresholds were bit-for-bit reproducible. The code, the calculator and the application are openly available [repository link to be added].
+The analysis is written in Python with LightGBM, NumPy, pandas, SciPy and scikit-learn. All final experiments ran on one computer, so that thresholds were bit-for-bit reproducible. The code, the calculator and the application are openly available at https://github.com/AmlanWTK/CAB-ECG.
 
 ---
 
-## 4 Results
+## IV. Results
 
-### 4.1 Imported models failed, differently in each direction
+### A. Imported models failed, differently in each direction
 
 Imported unchanged with the vendor's 80%-sensitivity threshold, both models broke the hospital's requirements, but in opposite ways (Fig. 2; Table 4).
 
@@ -371,11 +370,13 @@ These results determined the correct remedy in each direction (Fig. 3):
 
 No bedside score met the requirements at any cut-off in any of the 72 combinations of hospital, criterion and score that we checked. A blocked model therefore leaves the hospital with its usual care rather than with a certified alternative.
 
-### 4.2 CAB rarely switched on an unsafe model; conventional updating usually did
+### B. CAB rarely switched on an unsafe model; conventional updating usually did
 
-Fig. 4 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment. Supplementary Fig. S1 averages over all criteria and budgets.
+Fig. 4 shows, for the primary criterion, the share of runs in which each policy switched on an unsafe deployment.
 
-**Conventional policies were unsafe in most runs** (Supplementary Fig. S1):
+**Conventional policies were unsafe in most runs** (Table 5).
+
+**Table 5.** Unsafe and silent-failure rates of the conventional policies, averaged over all scenarios, criteria and budgets.
 
 | Policy | Unsafe | Silent failure |
 |---|---|---|
@@ -388,7 +389,9 @@ Fig. 4 shows, for the primary criterion, the share of runs in which each policy 
 
 AS-IS was a silent failure in every unsafe run, because the vendor's own figures always looked acceptable. For the updating policies, between a fifth and two fifths of runs were silent failures: the local data suggested the deployment was safe when it was not.
 
-**CAB was unsafe in 0.7% of runs overall**, with a silent-failure rate of 0.7%:
+**CAB was unsafe in 0.7% of runs overall**, with a silent-failure rate of 0.7% (Table 6).
+
+**Table 6.** CAB's unsafe rate by group of settings (α = 0.05; a setting is one scenario, criterion and budget).
 
 | Setting | Settings | Mean unsafe | Worst setting |
 |---|---|---|---|
@@ -402,11 +405,11 @@ At the ICU level, classical closed testing was unsafe in 97% of runs.
 
 - **B→A.** CAB blocked the unrepairable model in every run at every budget from 250 labels upward.
 - **A→B.** CAB blocked while the evidence was insufficient. It then certified the adapted model in 10% of runs at 4,000 labels, 70% at 8,000 and 97% at 12,000 (about 690 septic patients).
-- **Home control.** CAB approved the unchanged model rarely, in at most 25% of runs at 2,000 labels. The reason is given in Section 4.7.
+- **Home control.** CAB approved the unchanged model rarely, in at most 25% of runs at 2,000 labels. The reason is given in Section IV-G.
 
 The ablation without the adapt stage (CERT-RECAL) was almost never unsafe. It also almost never switched anything on across hospitals, because recalibration alone could not repair either model. The adapt stage is therefore what allows CAB to deploy at all after a real shift.
 
-### 4.3 Comparison with practical alternatives
+### C. Comparison with practical alternatives
 
 Fig. 5 compares CAB with the alternatives a hospital is most likely to use instead.
 
@@ -419,11 +422,11 @@ Fig. 5 compares CAB with the alternatives a hospital is most likely to use inste
 
 **Learn-then-Test without CAB's order made exactly the same decision as CAB in every cross-hospital run.** At home it approved the model less often than CAB, in 3.1% against 8.0% of runs (correct in 5.7% against 7.9%). The reason is that CAB tests the unchanged model on *all* the labels, whereas unordered certification spends half of them on fitting an adapted model that was never needed. At hospital B with 2,000 labels, CAB was correct in 9% of runs and unordered Learn-then-Test in none.
 
-### 4.4 The guarantee held at every error level
+### D. The guarantee held at every error level
 
-Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Supplementary Fig. S2 plots each setting's measured rate against the nominal level α for α = 0.01, 0.05 and 0.10. Table 5 summarises it.
+Every setting was repeated 100 times, so its measured unsafe rate is a binomial proportion with sampling error. Table 7 compares the measured rates with the nominal level α for α = 0.01, 0.05 and 0.10.
 
-**Table 5.** CAB's measured unsafe rate against the nominal level (`E12_validity.md`).
+**Table 7.** CAB's measured unsafe rate against the nominal level (`E12_validity.md`).
 
 | α | Group | Settings | Mean | Worst setting | Pooled 95% upper bound | Settings significantly above α |
 |---|---|---|---|---|---|---|
@@ -441,15 +444,9 @@ The home settings that exceeded α were those with the largest budgets. There, o
 
 **The error level trades safety against approval.** For A→B at 12,000 labels, CAB certified adaptation in 82%, 97% and 98% of runs at α = 0.01, 0.05 and 0.10. At 8,000 labels the figures were 35%, 70% and 81%. B→A was blocked in every run at every α.
 
-### 4.5 How many labels certification needs
+### E. How many labels certification needs
 
-**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 6a). To certify sensitivity at s* = 0.80, the calculator requires:
-
-| True sensitivity above the target | Septic patients needed |
-|---|---|
-| 2 points | about 5,800 |
-| 5 points | about 870 |
-| 10 points | about 190 |
+**The calculator.** The labels needed fall steeply as the model's margin over the target grows (Fig. 6a). To certify sensitivity at s* = 0.80, the calculator requires about 5,800 septic patients when the true sensitivity is 2 points above the target, about 870 at 5 points, and about 190 at 10 points.
 
 **Checked against simulation.** Run on each scenario's real operating curve, the calculator matched simulations of CAB's exact rule to within about 10–20%. For example, for A→B at the primary criterion it predicted 6,127 patients for certification alone, against 6,000 in simulation.
 
@@ -459,7 +456,7 @@ The home settings that exceeded α were those with the largest budgets. There, o
 
 **ICU types.** No single ICU type had enough patients to certify an adapted model. In the ICU-level A→B imports, CAB certified ADAPT in only 7–11% of runs at the largest budget the pools allowed (4,000).
 
-### 4.6 What blocking costs
+### F. What blocking costs
 
 A blocked model does not leave the ward without monitoring; the hospital keeps its usual care. Modelled as modified NEWS2 at 5 or more, the fallback:
 
@@ -476,35 +473,27 @@ When CAB adapted the model (A→B at 12,000 labels), it met both requirements in
 - 37 false-alerted patients per 100 admissions;
 - 0.55 alarms per patient-day.
 
-### 4.7 Hospital tolerance, not vendor headroom, decides the labels needed
+### G. Hospital tolerance, not vendor headroom, decides the labels needed
 
 **Headroom.** One might expect a vendor to make certification easier by shipping a threshold with extra headroom above the sensitivity target. We varied that headroom from 0 to 10 points (Fig. 6b–c). Approval at home did not change: about 46% of runs at hospital A and 66% at hospital B, averaged over budgets.
 
 The reason is that CAB's calibrate step chooses its own threshold from the hospital's labels. Headroom only changes whether an approval is recorded as KEEP or CALIBRATE. Large headroom (8–10 points) also raised the vendor's own false-alert rate by 6–15 points and could take it above the hospital's limit.
 
-**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 6b–c). With 8,000 labels, approval at hospital A was:
-
-| Tolerance m | Approval at hospital A |
-|---|---|
-| 0 points | 4% |
-| 5 points | 54% |
-| 10 points | 98% |
-
-The pattern at hospital B was similar.
+**Tolerance.** What did change approval was the hospital's false-alert tolerance m (Fig. 6b–c). With 8,000 labels, approval at hospital A rose from 4% of runs with no extra tolerance (m = 0) to 54% at 5 points and 98% at 10 points. The pattern at hospital B was similar.
 
 The practical rule follows. The hospital should set its tolerance deliberately before it starts labelling. The vendor should publish the full home operating curve, rather than a single threshold, so that the hospital can plan its labels with the calculator.
 
 ---
 
-### 4.8 Lead time and robustness
+### H. Lead time and robustness
 
-**Lead time.** Certification did not cost early warning (Table 6). In A→B with 12,000 labels, the models CAB switched on:
+**Lead time.** Certification did not cost early warning (Table 8). In A→B with 12,000 labels, the models CAB switched on:
 - detected 85% of septic patients in the window;
 - alerted 64% of all septic patients at least 6 h before onset, the highest share of any policy.
 
 Recalibration and fine-tuning alerted 58–59% that early, and the imported model as supplied 44%. The imported model's later-looking median of 11.9 h comes from detecting fewer patients, not from earlier alerts. Lead times are capped at 12 h by the detection window.
 
-**Table 6.** Lead time before sepsis onset, A→B, 12,000 labels, primary criterion (20 runs; the two reference rows are single evaluations on the target's test patients).
+**Table 8.** Lead time before sepsis onset, A→B, 12,000 labels, primary criterion (20 runs; the two reference rows are single evaluations on the target's test patients).
 
 | Alerting system | Septic patients detected | Median lead time, h (IQR) | Alerted ≥ 6 h before onset |
 |---|---|---|---|
@@ -529,11 +518,11 @@ CAB became more cautious, not less safe:
 
 The reason is that a missed septic patient leaves the sensitivity test and enters the false-alert test, where it is usually alerted. Both changes make passing harder. Point-estimate recalibration remained unsafe in every run, at every noise level. Over-calling sepsis and errors in the onset time were not studied.
 
-## 5 Application: the CAB Sepsis Monitor
+## V. Application: the CAB Sepsis Monitor
 
 The prototype shows how the gate fits into a hospital's adoption of an external model. A safety officer runs the gate before anything reaches a ward, and clinicians later see which alerting system is in use and whether it was certified. It has two screens. The figures show the Beth Israel model being installed at Emory, with a random sample of 12,000 labelled patients. This sample is drawn by the application, so it differs from the one in Table 2.
 
-### 5.1 Deployment gate
+### A. Deployment gate
 
 The deployment gate (Fig. 7) collects the three things CAB needs and nothing more:
 
@@ -550,7 +539,7 @@ In Fig. 7, keeping the model fails, because its sensitivity can only be proven t
 
 The simulation check shows why the proof matters. On 8,000 unseen patients, the adapted model detected 84.5% of septic patients and alerted 35.4% of non-septic patients. A simple, unproven recalibration that looked acceptable on the labelled patients would have alerted 55.6% of non-septic patients.
 
-### 5.2 Ward monitor
+### B. Ward monitor
 
 The ward monitor (Fig. 8) replays held-out ICU patients hour by hour, using whatever the gate switched on. If the gate blocked, it uses modified NEWS2. A header states which alerting system is in use and whether the gate certified it.
 
@@ -561,16 +550,16 @@ The ward monitor (Fig. 8) replays held-out ICU patients hour by hour, using what
 
 **The patient view** plots the risk score against the threshold, together with the main vital signs and laboratory results. A clinician can therefore see why an alert fired.
 
-### 5.3 Engineering
+### C. Engineering
 
 - **One code path.** The application calls the same gate function as the experiments. An automated test confirms identical decisions on 3,000 random cases covering all four outcomes.
 - **Runs locally.** It runs on a single workstation, and no patient data leave it.
 - **The vendor package as a specification.** It states the minimum a vendor must supply for a hospital to run the gate: the model, its threshold and its home validation counts. Ideally the vendor also supplies the full operating curve, so that the hospital can plan its labels with the calculator.
 - **Not yet deployable.** Integration with an electronic health record, for example through HL7 FHIR, and prospective testing are needed before any clinical use. The prototype is not intended for clinical use.
 
-## 6 Discussion
+## VI. Discussion
 
-### 6.1 Principal findings
+### A. Principal findings
 
 Three findings stand out.
 
@@ -580,7 +569,7 @@ Three findings stand out.
 
 **A certified gate can keep the probability of unsafe activation below a chosen level with no assumptions about the shift.** CAB did so in every setting we examined, at three error levels. Its cost is explicit: it needs enough labels to prove safety, and when they are not available it blocks.
 
-### 6.2 Implications for hospitals and vendors
+### B. Implications for hospitals and vendors
 
 **Blocking should be a planned outcome.** In our scenarios, blocking was the correct decision for one import direction, and the safe decision whenever labels were too few. A hospital adopting an external model should decide in advance what care it will provide if the model is blocked. Our analysis of bedside scores suggests that this fallback will not itself meet a strict false-alert requirement.
 
@@ -592,17 +581,17 @@ Three findings stand out.
 
 **Order saves labels.** Testing the unchanged model first, on all the labels, lets a hospital approve a model that needs no change with twice the evidence that an unordered procedure would have. This was visible in the home control.
 
-### 6.3 Limitations
+### C. Limitations
 
 - **Two hospitals from one country.** The Challenge data come from two US hospitals and a single, retrospectively applied sepsis definition. Validation on a multi-hospital database such as eICU [18] is the natural next step.
 - **Random labelling.** The guarantee requires a random (or known-probability) sample of labelled patients. Labelling only patients that clinicians flagged, or only an early period before a seasonal change, would break it.
-- **Label accuracy.** The guarantee assumes correct labels. Missed sepsis labels made CAB more cautious, not less safe (Section 4.8), but over-calling and onset-time errors were not studied.
+- **Label accuracy.** The guarantee assumes correct labels. Missed sepsis labels made CAB more cautious, not less safe (Section IV-H), but over-calling and onset-time errors were not studied.
 - **The safety criteria are a simplification.** They count detected patients within a fixed window. They do not weigh how early an alert comes, or the consequences of each missed case.
 - **Noisy judging in small settings.** Safety was judged on finite held-out patients, so in the settings with the fewest unlabelled septic patients the measured unsafe rate is itself noisy.
 - **Conservativeness.** The union bound and exact tests make CAB conservative. Measured unsafe rates were about a fifth of the nominal level, which suggests power can be recovered.
 - **No monitoring after deployment.** The guarantee covers the decision at deployment, not drift afterwards, which both regulatory frameworks expect to be monitored [24,25].
 
-### 6.4 Future work
+### D. Future work
 
 Four extensions follow directly:
 
@@ -617,7 +606,7 @@ Among the variations we tested, two ablations deserve mention:
 
 ---
 
-## 7 Conclusion
+## VII. Conclusion
 
 Importing a sepsis early-warning model is a decision with patient-safety consequences, and it can be made with a statistical guarantee. CAB tests the available remedies in order of intervention: keep, recalibrate, adapt. It switches on the first one whose sensitivity and false-alert rate are certified by exact tests, and blocks otherwise. In two hospitals and six import scenarios, CAB kept the rate of unsafe activation below the chosen level in every setting, while the alternatives did not. Its cost is the labels that proof requires. Hospitals should therefore plan for blocking, fix their false-alert tolerance before labelling, and size their local validation with a calculator, before they switch on a model built somewhere else.
 
@@ -627,13 +616,9 @@ Importing a sepsis early-warning model is a decision with patient-safety consequ
 
 **Data availability.** The PhysioNet/CinC Challenge 2019 data are openly available from PhysioNet under the Creative Commons Attribution 4.0 licence [10,16].
 
-**Code availability.** [Repository link to be added before submission.]
+**Code availability.** The analysis code, the label calculator and the prototype application are available at https://github.com/AmlanWTK/CAB-ECG.
 
-**Competing interests.** [To be completed by the authors.]
-
-**Funding.** [To be completed by the authors.]
-
-**Author contributions.** [To be completed by the authors.]
+**Figures.** All figures and tables were produced by the authors from the data above; the application screenshots show the authors' own software.
 
 ---
 
@@ -650,41 +635,33 @@ The figure files are in `outputs/sepsis/figures/` (PDF for the publisher, 300 dp
 - **Fig. 7** (`fig_app_gate`). The deployment gate of the prototype application: the hospital's requirements, its labelled patients and the vendor package (top); the decision, the evidence for each option, cheapest first, and the retrospective simulation check (bottom).
 - **Fig. 8** (`fig_app_ward`). The ward monitor, replaying ICU patients at hour 24 with the adapted model certified in Fig. 7: the ward table with each patient's score relative to the threshold, alert status and 24-hour trend, and one patient's risk trajectory against the alert threshold.
 
-Supplementary figures (not in the chapter body):
-
-- **Supplementary Fig. S1** (`fig4_overall`). Unsafe and silent-failure rates per policy, averaged over all scenarios, criteria and budgets.
-- **Supplementary Fig. S2** (`fig7_validity`). Measured unsafe rate of every setting against the nominal α.
-
 ---
 
 ## References
 
-> Check every entry (authors, year, volume, pages) against the original before submission, and
-> convert to the Springer reference style the editors specify.
-
-1. Singer M, Deutschman CS, Seymour CW, et al. The Third International Consensus Definitions for Sepsis and Septic Shock (Sepsis-3). JAMA. 2016;315(8):801–810.
-2. Finlayson SG, Subbaswamy A, Singh K, et al. The clinician and dataset shift in artificial intelligence. N Engl J Med. 2021;385(3):283–286.
-3. Subbaswamy A, Saria S. From development to deployment: dataset shift, causality, and shift-stable models in health AI. Biostatistics. 2020;21(2):345–352.
-4. Wong A, Otles E, Donnelly JP, et al. External validation of a widely implemented proprietary sepsis prediction model in hospitalized patients. JAMA Intern Med. 2021;181(8):1065–1070.
-5. Steyerberg EW. Clinical Prediction Models: A Practical Approach to Development, Validation, and Updating. 2nd ed. Springer; 2019.
-6. Van Calster B, McLernon DJ, van Smeden M, et al. Calibration: the Achilles heel of predictive analytics. BMC Med. 2019;17:230.
-7. Vergouwe Y, Nieboer D, Oostenbrink R, et al. A closed testing procedure to select an appropriate method for updating prediction models. Stat Med. 2017;36(28):4529–4539.
-8. Angelopoulos AN, Bates S, Candès EJ, Jordan MI, Lei L. Learn then Test: calibrating predictive algorithms to achieve risk control. arXiv:2110.01052. 2021.
-9. Bates S, Angelopoulos A, Lei L, Malik J, Jordan M. Distribution-free, risk-controlling prediction sets. J ACM. 2021;68(6):43.
-10. Reyna MA, Josef CS, Jeter R, et al. Early prediction of sepsis from clinical data: the PhysioNet/Computing in Cardiology Challenge 2019. Crit Care Med. 2020;48(2):210–217.
-11. Royal College of Physicians. National Early Warning Score (NEWS) 2: Standardising the assessment of acute-illness severity in the NHS. London: RCP; 2017.
-12. Adams R, Henry KE, Sridharan A, et al. Prospective, multi-site study of patient outcomes after implementation of the TREWS machine learning-based early warning system for sepsis. Nat Med. 2022;28:1455–1460.
-13. Riley RD, Debray TPA, Collins GS, et al. Minimum sample size for external validation of a clinical prediction model with a binary outcome. Stat Med. 2021;40(19):4230–4251.
-14. Saerens M, Latinne P, Decaestecker C. Adjusting the outputs of a classifier to new a priori probabilities: a simple procedure. Neural Comput. 2002;14(1):21–41.
-15. Lipton ZC, Wang YX, Smola AJ. Detecting and correcting for label shift with black box predictors. In: Proc. 35th Int. Conf. Machine Learning (ICML). 2018.
-16. Goldberger AL, Amaral LAN, Glass L, et al. PhysioBank, PhysioToolkit, and PhysioNet: components of a new research resource for complex physiologic signals. Circulation. 2000;101(23):e215–e220.
-17. Ke G, Meng Q, Finley T, et al. LightGBM: a highly efficient gradient boosting decision tree. In: Advances in Neural Information Processing Systems 30 (NeurIPS). 2017.
-18. Pollard TJ, Johnson AEW, Raffa JD, et al. The eICU Collaborative Research Database, a freely available multi-center database for critical care research. Sci Data. 2018;5:180178.
-19. Angelopoulos AN, Bates S, Fannjiang C, Jordan MI, Zrnic T. Prediction-powered inference. Science. 2023;382(6671):669–674.
-20. Wong A, Currey D, Schwinne M, et al. Multicenter prospective validation of an updated proprietary sepsis prediction model. JAMA Netw Open. 2026;9(2):e260181. doi:10.1001/jamanetworkopen.2026.0181
-21. Kamran F, Tjandra D, Heiler A, et al. Evaluation of sepsis prediction models before onset of treatment. NEJM AI. 2024;1(3). doi:10.1056/AIoa2300032
-22. Moor M, Bennett N, Plečko D, et al. Predicting sepsis using deep learning across international sites: a retrospective development and validation study. eClinicalMedicine. 2023;62:102124. doi:10.1016/j.eclinm.2023.102124
-23. Angelopoulos AN, Bates S, Fisch A, Lei L, Schuster T. Conformal risk control. In: Proc. 12th Int. Conf. Learning Representations (ICLR). 2024.
-24. U.S. Food and Drug Administration. Marketing submission recommendations for a predetermined change control plan for artificial intelligence-enabled device software functions: guidance for industry and Food and Drug Administration staff. Final guidance, December 2024 (current version August 2025). Docket FDA-2022-D-2628.
-25. Regulation (EU) 2024/1689 of the European Parliament and of the Council of 13 June 2024 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act). Off J Eur Union. 2024;L 2024/1689.
-26. Regulation (EU) 2026/1744 of the European Parliament and of the Council of 8 July 2026 amending Regulation (EU) 2024/1689 (Digital Omnibus on AI). Off J Eur Union. 24 July 2026.
+1. M. Singer, C. S. Deutschman, C. W. Seymour, et al., “The Third International Consensus Definitions for Sepsis and Septic Shock (Sepsis-3),” JAMA, vol. 315, no. 8, pp. 801–810, 2016.
+2. S. G. Finlayson, A. Subbaswamy, K. Singh, et al., “The Clinician and Dataset Shift in Artificial Intelligence,” New England Journal of Medicine, vol. 385, no. 3, pp. 283–286, 2021.
+3. A. Subbaswamy and S. Saria, “From Development to Deployment: Dataset Shift, Causality, and Shift-Stable Models in Health AI,” Biostatistics, vol. 21, no. 2, pp. 345–352, 2020.
+4. A. Wong, E. Otles, J. P. Donnelly, et al., “External Validation of a Widely Implemented Proprietary Sepsis Prediction Model in Hospitalized Patients,” JAMA Internal Medicine, vol. 181, no. 8, pp. 1065–1070, 2021.
+5. E. W. Steyerberg, “Clinical Prediction Models: A Practical Approach to Development, Validation, and Updating,” 2nd ed., Springer: Cham, Switzerland, 2019.
+6. B. Van Calster, D. J. McLernon, M. van Smeden, et al., “Calibration: The Achilles Heel of Predictive Analytics,” BMC Medicine, vol. 17, art. 230, 2019.
+7. Y. Vergouwe, D. Nieboer, R. Oostenbrink, et al., “A Closed Testing Procedure to Select an Appropriate Method for Updating Prediction Models,” Statistics in Medicine, vol. 36, no. 28, pp. 4529–4539, 2017.
+8. A. N. Angelopoulos, S. Bates, E. J. Candès, M. I. Jordan, and L. Lei, “Learn then Test: Calibrating Predictive Algorithms to Achieve Risk Control,” 2021, https://arxiv.org/abs/2110.01052, [Retrieved: October 2026].
+9. S. Bates, A. Angelopoulos, L. Lei, J. Malik, and M. Jordan, “Distribution-Free, Risk-Controlling Prediction Sets,” Journal of the ACM, vol. 68, no. 6, art. 43, 2021.
+10. M. A. Reyna, C. S. Josef, R. Jeter, et al., “Early Prediction of Sepsis from Clinical Data: The PhysioNet/Computing in Cardiology Challenge 2019,” Critical Care Medicine, vol. 48, no. 2, pp. 210–217, 2020.
+11. Royal College of Physicians, “National Early Warning Score (NEWS) 2: Standardising the Assessment of Acute-Illness Severity in the NHS,” Royal College of Physicians: London, UK, 2017.
+12. R. Adams, K. E. Henry, A. Sridharan, et al., “Prospective, Multi-Site Study of Patient Outcomes after Implementation of the TREWS Machine Learning-Based Early Warning System for Sepsis,” Nature Medicine, vol. 28, pp. 1455–1460, 2022.
+13. R. D. Riley, T. P. A. Debray, G. S. Collins, et al., “Minimum Sample Size for External Validation of a Clinical Prediction Model with a Binary Outcome,” Statistics in Medicine, vol. 40, no. 19, pp. 4230–4251, 2021.
+14. M. Saerens, P. Latinne, and C. Decaestecker, “Adjusting the Outputs of a Classifier to New a Priori Probabilities: A Simple Procedure,” Neural Computation, vol. 14, no. 1, pp. 21–41, 2002.
+15. Z. C. Lipton, Y.-X. Wang, and A. J. Smola, “Detecting and Correcting for Label Shift with Black Box Predictors,” in Proc. the 35th International Conference on Machine Learning (ICML), Stockholm, Sweden, 2018, pp. 3122–3130.
+16. A. L. Goldberger, L. A. N. Amaral, L. Glass, et al., “PhysioBank, PhysioToolkit, and PhysioNet: Components of a New Research Resource for Complex Physiologic Signals,” Circulation, vol. 101, no. 23, pp. e215–e220, 2000.
+17. G. Ke, Q. Meng, T. Finley, et al., “LightGBM: A Highly Efficient Gradient Boosting Decision Tree,” in Proc. Advances in Neural Information Processing Systems 30 (NeurIPS), Long Beach, CA, USA, 2017, pp. 3146–3154.
+18. T. J. Pollard, A. E. W. Johnson, J. D. Raffa, et al., “The eICU Collaborative Research Database, a Freely Available Multi-Center Database for Critical Care Research,” Scientific Data, vol. 5, art. 180178, 2018.
+19. A. N. Angelopoulos, S. Bates, C. Fannjiang, M. I. Jordan, and T. Zrnic, “Prediction-Powered Inference,” Science, vol. 382, no. 6671, pp. 669–674, 2023.
+20. A. Wong, D. Currey, M. Schwinne, et al., “Multicenter Prospective Validation of an Updated Proprietary Sepsis Prediction Model,” JAMA Network Open, vol. 9, no. 2, art. e260181, 2026.
+21. F. Kamran, D. Tjandra, A. Heiler, et al., “Evaluation of Sepsis Prediction Models before Onset of Treatment,” NEJM AI, vol. 1, no. 3, 2024.
+22. M. Moor, N. Bennett, D. Plečko, et al., “Predicting Sepsis Using Deep Learning across International Sites: A Retrospective Development and Validation Study,” eClinicalMedicine, vol. 62, art. 102124, 2023.
+23. A. N. Angelopoulos, S. Bates, A. Fisch, L. Lei, and T. Schuster, “Conformal Risk Control,” in Proc. the 12th International Conference on Learning Representations (ICLR), Vienna, Austria, 2024.
+24. U.S. Food and Drug Administration, “Marketing Submission Recommendations for a Predetermined Change Control Plan for Artificial Intelligence-Enabled Device Software Functions: Guidance for Industry and Food and Drug Administration Staff,” 2024 (current version August 2025), https://www.fda.gov/regulatory-information/search-fda-guidance-documents/marketing-submission-recommendations-predetermined-change-control-plan-artificial-intelligence, [Retrieved: October 2026].
+25. European Parliament and Council of the European Union, “Regulation (EU) 2024/1689 Laying Down Harmonised Rules on Artificial Intelligence (Artificial Intelligence Act),” Official Journal of the European Union, L 2024/1689, 2024, https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng, [Retrieved: October 2026].
+26. European Parliament and Council of the European Union, “Regulation (EU) 2026/1744 Amending Regulation (EU) 2024/1689 (Digital Omnibus on AI),” Official Journal of the European Union, 24 July 2026, https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng, [Retrieved: October 2026].

@@ -4,7 +4,7 @@
                       labelled patients are used to decide KEEP / CALIBRATE / ADAPT / BLOCK, with
                       the exact statistical evidence for each step.
   2. Ward monitor     replays real ICU patients (PhysioNet/CinC Challenge 2019 test split) hour by
-                      hour with whatever the gate switched on, or modified NEWS2 if it blocked.
+                      hour with whatever the gate deployed, or modified NEWS2 if it blocked.
   3. About            what the application does and does not claim.
 
 Research prototype on public retrospective data. Not for clinical use.
@@ -41,13 +41,13 @@ VITALS_SHOWN = [("HR", "Heart rate (/min)"), ("MAP", "Mean arterial pressure (mm
                 ("O2Sat", "SpO₂ (%)")]
 DECISION_STYLE = {
     "KEEP": ("#1b7f4b", "Keep the imported model as it is",
-             "Its home threshold meets both safety requirements here, with proof."),
+             "Its home threshold meets both safety requirements here, certified."),
     "CALIBRATE": ("#2a78d6", "Calibrate: same model, new local threshold",
                   "The model ranks patients well enough here, but needs a new alert threshold."),
     "ADAPT": ("#104281", "Adapt: model updated on local data",
               "Only an updated version of the model meets both requirements here."),
-    "BLOCK": ("#a8322d", "Block: do not switch the AI on",
-              "No option could be proven safe with the patients labelled so far. "
+    "BLOCK": ("#a8322d", "Block: do not deploy the AI",
+              "No option could be certified with the patients labelled so far. "
               "The unit keeps using modified NEWS2."),
 }
 
@@ -124,7 +124,7 @@ def page_gate(src, tgt):
     st.markdown(f"The **{SITE[src]}** sepsis model is being installed at **{SITE[tgt]}**"
                 + (" (control: the model's own hospital, new patients)." if control else ".")
                 + " Before any alert reaches a clinician, the gate checks the hospital's own "
-                  "safety requirements on its own labelled patients, and proves them statistically.")
+                  "safety requirements on its own labelled patients, and certifies them with exact statistical tests.")
 
     c1, c2, c3 = st.columns([1.1, 1.1, 1.2], gap="large")
     with c1:
@@ -147,12 +147,12 @@ def page_gate(src, tgt):
         st.markdown(
             f"- Alert threshold: **{vp['tau']:.4f}**\n"
             f"- Home validation ({vp['home_patients']:,} patients, {vp['home_septic']:,} septic): "
-            f"sensitivity **{vp['home_sens']:.1%}** (proven ≥ {s_star:.0%}), "
+            f"sensitivity **{vp['home_sens']:.1%}** (certified ≥ {s_star:.0%}), "
             f"non-septic patients alerted **{vp['home_fa']:.1%}**\n"
             f"- So this hospital requires: sensitivity ≥ **{s_star:.0%}**, "
             f"non-septic alerted ≤ **{vp['f_star']:.1%}**")
         st.markdown(f"<span class='small'>Each option is tested at level α/4 = {ALPHA / 4:.4f}; "
-                    f"the chance of switching on anything unsafe is at most {ALPHA:.0%}.</span>",
+                    f"the chance of deploying anything unsafe is at most {ALPHA:.0%}.</span>",
                     unsafe_allow_html=True)
 
     if st.button("Run the gate", type="primary"):
@@ -206,9 +206,9 @@ def page_gate(src, tgt):
         rows.append({
             "Option": s["step"], "Tested on": s["data"], "Threshold": f"{s['threshold']:.4f}",
             "Septic alerted": f"{s['detected']}/{s['septic_n']} ({s['sens_observed']:.1%})",
-            "Sensitivity proven ≥": f"{s['sens_lower_bound']:.1%}" + (" ✅" if s["sens_ok"] else " ❌"),
+            "Lower bound": f"{s['sens_lower_bound']:.1%}" + (" ✅" if s["sens_ok"] else " ❌"),
             "Non-septic alerted": f"{s['alerted']}/{s['nonseptic_n']} ({s['fa_observed']:.1%})",
-            "False alerts proven ≤": f"{s['fa_upper_bound']:.1%}" + (" ✅" if s["fa_ok"] else " ❌"),
+            "Upper bound": f"{s['fa_upper_bound']:.1%}" + (" ✅" if s["fa_ok"] else " ❌"),
             "Result": "✅ passes" if s["passed"] else "❌ fails"})
     st.dataframe(pd.DataFrame(rows).fillna(""), hide_index=True, width="stretch")
     st.caption(f"Requirements: sensitivity ≥ {dep['s_star']:.0%} and non-septic alerted ≤ "
@@ -229,9 +229,9 @@ def page_gate(src, tgt):
                     f"patients, no proof): looked like sensitivity {a_s:.1%}, non-septic alerted {a_f:.1%}; "
                     f"in reality {verdict(*ck['naive'])}")
         if ck["deployed"]:
-            st.markdown(f"- **What the gate switched on ({dep['remedy'].title()}):** {verdict(*ck['deployed'])}")
+            st.markdown(f"- **What the gate deployed ({dep['remedy'].title()}):** {verdict(*ck['deployed'])}")
         else:
-            st.markdown("- **The gate switched nothing on**, so no AI alerts can break the requirements.")
+            st.markdown("- **The gate deployed nothing**, so no AI alerts can break the requirements.")
 
 
 # ------------------------------------------------------------------------------------------ ward
@@ -247,7 +247,7 @@ def page_ward(src, tgt):
     else:
         score, tau = C["news2"], NEWS2_CUT
         mode = ("Modified NEWS2 ≥ 5: the gate blocked the AI" if active else
-                "Modified NEWS2 ≥ 5: run the deployment gate to switch the AI on")
+                "Modified NEWS2 ≥ 5: run the deployment gate to deploy the AI")
         unit = "NEWS2"
 
     st.header(f"Ward monitor — {SITE[tgt]} ICU")
@@ -354,8 +354,8 @@ def page_about():
 one hospital is checked against the receiving hospital's own safety requirements before any alert
 reaches clinicians. The gate tries the cheapest option first: keep the model as it is, set a new
 local threshold (calibrate), update the model on local data (adapt), or refuse (block). An option
-is switched on only when exact statistical tests on the hospital's labelled patients show that it
-meets both requirements, so the chance of switching on an unsafe system is at most 5%.
+is deployed only when exact statistical tests on the hospital's labelled patients show that it
+meets both requirements, so the chance of deploying an unsafe system is at most 5%.
 
 **Data.** PhysioNet/CinC Challenge 2019 (Beth Israel Deaconess Medical Center and Emory University
 Hospital), 40,336 ICU stays, hourly vital signs, laboratory values and demographics; Sepsis-3 labels.
