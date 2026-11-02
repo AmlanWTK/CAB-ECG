@@ -26,11 +26,11 @@
 
 ## Before submission
 
-- [ ] Recheck the regulatory facts against the official texts: FDA PCCP guidance (current
+- [x] (2026-11-02, `reference_check.md`) Recheck the regulatory facts against the official texts: FDA PCCP guidance (current
       version), EU AI Act Article 43(4) and post-market monitoring, Regulation (EU) 2026/1744 and
       the 2 August 2028 date for Annex I devices.
-- [ ] EU AI Act: decide whether to cite the consolidated text in force at submission rather than Regulation (EU) 2024/1689 plus its 2026 amendment.
-- [ ] Check every reference's metadata and URL, and that each citation supports its claim.
+- [x] EU AI Act: keep 2024/1689 plus amendment 2026/1744 (decided; `reference_check.md`). Was: decide whether to cite the consolidated text in force at submission rather than Regulation (EU) 2024/1689 plus its 2026 amendment.
+- [x] Check every reference's metadata and URL, and that each citation supports its claim (`reference_check.md`; two wording corrections in Section 2).
 - [ ] Open the Word file in Word, check page count (at least 20), fonts, equations and figures;
       save the PDF from Word.
 - [ ] Check the PDF's extracted text for technical names (Learn-then-Test, Distribution-Free,
@@ -43,6 +43,6 @@
 - [ ] Commit the app wording change ("switch on" → "deploy", "proves" → "certifies", bound column headers) with the chapter.
 - [ ] Keep three kinds of evidence distinct everywhere: the theoretical guarantee (theorem, under A1–A3), the certification decision (the exact tests on one local sample), and the retrospective evaluation (performance on patients excluded from the gate's decisions).
 - [ ] Turnitin similarity below 18%.
-- [ ] Tag a release (or note the commit) of the repository that produced the results, and cite it in Section 3.9.
+- [x] Release tagged (springer-chapter-v1.0) and cited in Section 3.9 and the back matter.
 - [x] Competing-interests statement from both authors (none).
 - [ ] Name the final file after the corresponding author (sarkar.docx) with its PDF.

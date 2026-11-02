@@ -8,7 +8,7 @@ The PhysioNet/Computing in Cardiology Challenge 2019 data analysed in this chapt
 
 ## Code Availability
 
-The analysis code, the label calculator, the scripts that produce every table and figure, and the prototype application are openly available at https://github.com/AmlanWTK/CAB-ECG.
+The analysis code, the label calculator, the scripts that produce every table and figure, and the prototype application are openly available at https://github.com/AmlanWTK/CAB-ECG. The version used for this chapter is release springer-chapter-v1.0 (https://github.com/AmlanWTK/CAB-ECG/tree/springer-chapter-v1.0).
 
 ## Figures and Tables
 
