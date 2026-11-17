@@ -107,3 +107,23 @@ Demo results (`--definition relaxed` / `challenge`):
   recording check.
 - The onset-under-4-h rule excludes many septic stays (22 of 30 in MIMIC-IV, 33 of 51 in eICU),
   as in the Challenge: early-warning models are for sepsis that develops in the ICU.
+
+## Full MIMIC-IV v3.1, first extraction (2026-11-17)
+
+Run on the remote PC; aggregate output only (PhysioNet data use agreement).
+
+| | Challenge definition |
+|---|---|
+| ICU stays | 94,458; 14 dropped (no admission or discharge time, new in v3.1), 94,444 used |
+| Suspected infection | 14,951 (16%) |
+| Sepsis-3 before cohort rules | 7,357; onset hour median 2.0 |
+| Excluded (onset < 4 h / < 8 h of data) | 4,497 / 1,539 |
+| Cohort, septic | 88,408, 2,857 (3.2%); onset median 33.0 h (IQR 8.2-103.7) |
+| SOFA component coverage (hours) | resp 4%, coag 7%, liver 2%, cardio 89%, cns 19%, renal 74% |
+| Hours with SepsisLabel = 1 | 7.2% |
+
+**Check 1 fails**: 3.2% septic against the range of 5-13% fixed in advance (`label_check.md`).
+Following the rule there, the extraction is investigated before anything else is run, and the
+range is not changed. First diagnostics: `code/label_diagnostics.py` on the per-stay tables
+(timing of suspected infection, suspected infection without a SOFA rise, what sets early onsets).
+Cause and fix to be recorded here.
