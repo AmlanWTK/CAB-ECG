@@ -202,6 +202,12 @@ def main():
     stays = stays.rename(columns={"stay_id": "stay"})
     stays["intime"] = pd.to_datetime(stays.intime)
     stays["outtime"] = pd.to_datetime(stays.outtime)
+    # MIMIC-IV v3.1 has a few stays without an admission or discharge time (none in the v2.2 demo);
+    # their length is unknown, so they cannot be put on the hourly grid
+    ok = stays.intime.notna() & stays.outtime.notna() & (stays.outtime > stays.intime)
+    if (~ok).any():
+        print(f"dropped {(~ok).sum()} ICU stays with a missing or non-positive length of stay")
+    stays = stays[ok].reset_index(drop=True)
     stays["hours"] = np.ceil((stays.outtime - stays.intime).dt.total_seconds() / 3600).astype(int)
     print(f"{len(stays)} ICU stays")
     G = BT.Grid(stays.stay, stays.hours)
