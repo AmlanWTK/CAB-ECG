@@ -149,3 +149,65 @@ Cause and fix to be recorded here.
 Open questions: whether the Challenge took cultures and antibiotics from before ICU admission
 (the paper does not say), and whether hospital A's cohort differs in unit mix or period.
 Round 2 adds the septic share by first ICU unit and by MIMIC-IV anchor year group (`--root`).
+
+**Diagnostics, round 2** (2026-11-17):
+
+- Unit mix does not explain it. Every large unit is below 5%: MICU 3.3% (18,548 stays), SICU 3.7%,
+  TSICU 4.1%, CCU 2.8%, MICU/SICU 2.5%, CVICU 2.0% (14,420 stays). Only the Neuro SICU (7.2%) and a
+  small intermediate unit reach the range.
+- Period does not explain it either. The septic share rises over time, from 2.8% in 2008-2010 (the
+  years closest to the Challenge's hospital A) to 4.3% in 2020-2022.
+- Compared with the open Challenge data (computed here from `outputs/sepsis/rows.pkl`), **the onset
+  timing matches**. Hospital A's onset median is 34.5 h (IQR 13-78) against our 33.0 h (8.2-103.7).
+  Neither has onsets under 4 h. 20% of A's stays are shorter than 24 h, against 18% of ours. Only
+  the rate differs: 8.8% at A against 3.2% here.
+- **New finding: the Challenge truncates septic stays.** In A and B, every septic stay ends 8 to
+  10 hours after its first SepsisLabel = 1 (median 10), that is, at about onset + 3 h. So 2.2% of
+  A's hours are labelled, against 7.2% in our MIMIC-IV table, which runs to discharge. This does
+  not change the septic share. But the Challenge-format export (WP2) must truncate septic stays at
+  onset + 3 h, or the hourly prevalence and the evaluation differ from the chapter's. To fix in
+  `challenge_format.py` before WP3.
+
+Next: the relaxed definition, to see whether the strict suspicion rule is the bottleneck
+(blood cultures plus IV antibiotic courses of 72 h or more taken from prescription orders).
+
+**Relaxed definition, full MIMIC-IV** (2026-11-17):
+
+| | Challenge definition | Relaxed definition |
+|---|---|---|
+| Suspected infection | 14,951 (15.8%) | 42,853 (45.4%) |
+| Sepsis-3 before cohort rules | 7,357 (7.8%) | 16,769 (17.8%) |
+| Excluded (onset < 4 h / < 8 h) | 4,497 / 1,539 | 11,319 / 1,539 |
+| Cohort, septic | 88,408, 2,857 (3.2%) | 81,586, 5,439 (6.7%) |
+| Onset median (IQR), h | 33.0 (8.2-103.7) | 16.0 (6.2-46.0) |
+| Hours with SepsisLabel = 1 | 7.2% | 13.5% |
+
+- Check 2, first part, **passes**: the relaxed share (6.7%) is at least the Challenge share (3.2%).
+- Check 2, second part, **fails**: only 2,017 of the 2,857 stays septic under the Challenge definition
+  (70.6%) are septic under the relaxed one, against at least 80%. A likely mechanism is the "first
+  pair" rule. Under the relaxed definition, an earlier culture-antibiotic pair (any culture, any
+  order) can move suspicion earlier. That either puts onset under 4 h (excluded) or moves the SOFA
+  window away from the rise. Not yet verified.
+- Suspected infection is 45% under the relaxed definition, the same as Moor et al.'s 45% on
+  MIMIC-III, against 16% under the Challenge definition. So most of the difference lies in the
+  strict suspicion rule: blood cultures only, and IV courses of at least 72 h built from
+  prescription orders. The Challenge counted antibiotics *administered* for 72 consecutive hours.
+  MIMIC-IV records administrations in `hosp/emar`, which we do not use yet.
+- Not yet run: check 4's onset-concentration part, check 5 (`challenge_b.py` inputs against
+  hospital A), and eICU (check 3).
+
+**Diagnostics, round 3** (built 2026-11-17, to run on the full data):
+
+- `label_diagnostics.py` with both per-stay tables now breaks down the stays that are septic under
+  the Challenge definition but not under the relaxed one: excluded for early onset, excluded as
+  short, no suspicion, or suspicion without a SOFA rise. It also reports whether relaxed suspicion
+  came earlier (the "first pair" mechanism).
+- `abx_diagnostics.py --root <MIMIC-IV>` compares 72-h IV antibiotic courses built from orders
+  (`prescriptions`, as the extractor does now) with courses built from recorded doses (`emar`).
+  It counts only doses given, IV by the route of the linked prescription, with the same 24-h
+  joining rule. `emar` does not cover every admission, so the comparison is limited to admissions
+  with any `emar` record.
+- On the demo (too small to judge), `emar` covers 37 of 57 blood-culture admissions. Within them,
+  administrations give **fewer** 72-h courses than orders (18 against 26), not more. If the full
+  data agree, order-based courses do not undercount the Challenge's rule, and the antibiotic
+  source does not explain check 1.

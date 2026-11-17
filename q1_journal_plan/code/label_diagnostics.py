@@ -108,6 +108,21 @@ def main():
         both = (c & r.reindex(c.index, fill_value=False)).sum()
         print(f"\n== overlap: {n(both)} of {n(c.sum())} stays septic under the first definition are "
               f"septic under the second ({pct(both, c.sum())})")
+        # the stays septic under the first definition but not the second: what the second says
+        s1, s2 = (x.set_index("stay") for x in a)
+        lost = s2.reindex(c[c].index)
+        lost = lost[~lost.septic.fillna(False).astype(bool)]
+        status = np.select([lost.excluded.eq("onset under 4 h"), lost.excluded.eq("under 8 h"),
+                            lost.t_suspicion.isna(), lost.onset.isna()],
+                           ["excluded, onset under 4 h", "excluded, under 8 h", "no suspected infection",
+                            "suspected infection, no SOFA rise"], "other")
+        print(f"  the {n(len(lost))} not septic under the second definition, by their status there:")
+        for k, v in pd.Series(status).value_counts().items():
+            print(f"    {k:>36}: {n(v):>7}  {pct(v, len(lost)):>6}")
+        d = lost.t_suspicion - s1.t_suspicion.reindex(lost.index)
+        print(f"  suspicion earlier under the second definition: {n((d < 0).sum())}; same time: "
+              f"{n((d == 0).sum())}; later: {n((d > 0).sum())}; median shift {d[d < 0].median():.1f} h"
+              if (d < 0).sum() >= 10 else "  suspicion shift: fewer than 10 stays")
 
 
 if __name__ == "__main__":
