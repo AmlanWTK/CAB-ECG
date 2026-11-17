@@ -6,12 +6,14 @@ Follows the rules used to label the PhysioNet/CinC 2019 Challenge (Reyna et al.,
 - Suspected infection: a blood culture and an IV antibiotic given for at least 72 consecutive
   hours (the extractors keep only such courses). If the culture came first, the antibiotic must be
   ordered within 72 h; if the antibiotic came first, the culture must be drawn within 24 h. Its
-  time is the earlier of the two; the first such pair in the stay is used.
+  time is the earlier of the two. Every such pair is a suspicion episode (decided 2026-11-17,
+  notes/sepsis_labels.md); episodes="first" keeps only the stay's first pair, the earlier rule.
 - Organ dysfunction: a rise in SOFA of 2 or more within a 24-hour period, i.e. above the lowest
   SOFA in the previous 24 h. SOFA is computed hourly as the worst score of each component over the
   previous 24 h.
 - Onset: the earlier of the suspicion time and the first hour of the SOFA rise, provided the rise
-  falls no more than 24 h before or 12 h after suspicion.
+  falls no more than 24 h before or 12 h after suspicion. With several episodes, the earliest
+  episode that has such a rise sets the onset.
 - SepsisLabel: 1 from 6 h before onset onward, as in the Challenge.
 - Cohort: stays with at least 8 hours of data; stays with onset less than 4 h after ICU admission
   excluded; stays truncated at 2 weeks (`challenge_cohort`).
@@ -38,13 +40,21 @@ LABEL_LEAD = 6
 MIN_HOURS, MIN_ONSET_HOUR, MAX_HOURS = 8, 4, 14 * 24
 
 
-def suspicion_times(cultures, antibiotics):
-    """First time of suspected infection per stay (Series indexed by stay)."""
+def suspicion_episodes(cultures, antibiotics):
+    """Every suspicion episode: one row per stay and distinct time (columns stay, t), from each
+    culture-antibiotic pair that meets the timing rule."""
     m = cultures[["stay", "t"]].merge(antibiotics[["stay", "t"]], on="stay", suffixes=("_c", "_a"))
     d = m.t_a - m.t_c
     ok = ((d >= 0) & (d <= ABX_AFTER_CULTURE)) | ((d < 0) & (-d <= CULTURE_AFTER_ABX))
     m = m[ok]
-    return np.minimum(m.t_c, m.t_a).groupby(m.stay).min().rename("t_suspicion")
+    ep = pd.DataFrame({"stay": m.stay.to_numpy(), "t": np.minimum(m.t_c, m.t_a).to_numpy()})
+    return ep.drop_duplicates().sort_values(["stay", "t"]).reset_index(drop=True)
+
+
+def suspicion_times(cultures, antibiotics):
+    """First time of suspected infection per stay (Series indexed by stay)."""
+    ep = suspicion_episodes(cultures, antibiotics)
+    return ep.groupby("stay").t.min().rename("t_suspicion")
 
 
 # ---- SOFA component scores (Vincent et al. 1996) ----
@@ -101,16 +111,26 @@ def hourly_sofa(h):
     return worst.fillna(0).sum(axis=1).reindex(h.index)
 
 
-def onset_times(h, t_susp):
-    """h: stay, hour, sofa. Onset per stay (Series), NaN when not septic."""
+def onset_times(h, susp):
+    """h: stay, hour, sofa. susp: suspicion episodes (DataFrame stay, t) or one time per stay
+    (Series indexed by stay). For each episode, the first hour whose SOFA is 2 or more above the
+    lowest SOFA of the previous 24 h, from 24 h before to 12 h after the episode; the earliest
+    episode with such a rise sets the onset. Returns (onset, suspicion time used), both Series
+    over the stays of h, NaN when not septic."""
+    ep = susp.rename("t").rename_axis("stay").reset_index() if isinstance(susp, pd.Series) else susp
+    ep = ep[["stay", "t"]].dropna().astype({"t": float})
     h = h[["stay", "hour", "sofa"]].copy()
-    h["base"] = (h.groupby("stay", sort=False)["sofa"].rolling(SOFA_RISE_WINDOW + 1, min_periods=1).min()
-                 .reset_index(level=0, drop=True).reindex(h.index))  # lowest SOFA in the previous 24 h
-    h["t_susp"] = h["stay"].map(t_susp)
-    rise = h[(h.sofa - h.base >= 2) & (h.hour >= h.t_susp - SOFA_BEFORE) & (h.hour <= h.t_susp + SOFA_AFTER)]
-    t_sofa = rise.groupby("stay")["hour"].min()
-    onset = np.fmin(t_susp.reindex(t_sofa.index), t_sofa)
-    return onset.reindex(h["stay"].unique()).rename("onset")
+    base = (h.groupby("stay", sort=False)["sofa"].rolling(SOFA_RISE_WINDOW + 1, min_periods=1).min()
+            .reset_index(level=0, drop=True).reindex(h.index))  # lowest SOFA in the previous 24 h
+    rise = h.loc[h.sofa - base >= 2, ["stay", "hour"]].astype({"hour": float}).rename(columns={"hour": "t_sofa"})
+    ep = ep.assign(lo=ep.t - SOFA_BEFORE).sort_values("lo")
+    m = pd.merge_asof(ep, rise.sort_values("t_sofa"), left_on="lo", right_on="t_sofa", by="stay",
+                      direction="forward")   # first rise at or after 24 h before the episode
+    m = m[m.t_sofa <= m.t + SOFA_AFTER]
+    first = m.sort_values(["stay", "t"]).groupby("stay").first()   # earliest episode with a rise
+    stays = h["stay"].unique()
+    onset = np.fmin(first.t, first.t_sofa).reindex(stays).rename("onset")
+    return onset, first.t.reindex(stays).rename("t_suspicion_used")
 
 
 def sepsis_label(h, onset):
@@ -134,9 +154,10 @@ FEATURES = ["pf", "ventilated", "platelets", "bilirubin", "map", "dopa", "dobu",
             "gcs", "creatinine", "urine_24h"]
 
 
-def score_and_label(h, t_susp):
+def score_and_label(h, susp):
     """h: one row per stay-hour (sorted by stay, hour) with FEATURES (worst value in the hour;
-    NaN = not measured). Adds the component scores, sofa and SepsisLabel; returns (h, onset)."""
+    NaN = not measured). susp: suspicion episodes or times (onset_times). Adds the component
+    scores, sofa and SepsisLabel; returns (h, onset, suspicion time used)."""
     h = h.copy()
     h["sofa_resp"] = score_resp(h.pf.to_numpy(), h.ventilated.to_numpy())
     h["sofa_coag"] = score_coag(h.platelets.to_numpy())
@@ -146,9 +167,9 @@ def score_and_label(h, t_susp):
     h["sofa_cns"] = score_cns(h.gcs.to_numpy())
     h["sofa_renal"] = score_renal(h.creatinine.to_numpy(), h.urine_24h.to_numpy())
     h["sofa"] = hourly_sofa(h)
-    onset = onset_times(h, t_susp)
+    onset, used = onset_times(h, susp)
     h["SepsisLabel"] = sepsis_label(h, onset)
-    return h, onset
+    return h, onset, used
 
 
 def courses(df, key, start, stop, gap, min_len):

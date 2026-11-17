@@ -191,6 +191,8 @@ def main():
     ap.add_argument("--root", default=str(DEFAULT_ROOT))
     ap.add_argument("--out", default=str(REPO / "outputs/sepsis_q1/mimiciv_demo"))
     ap.add_argument("--definition", choices=["relaxed", "challenge"], default="relaxed")
+    ap.add_argument("--episodes", choices=["all", "first"], default="all",
+                    help="suspicion episodes used for onset (sepsis3.py); 'first' is the rule before 2026-11-17")
     a = ap.parse_args()
     root = Path(a.root)
     out = Path(f"{a.out}_{a.definition}")
@@ -232,7 +234,9 @@ def main():
     orders = rx.dropna(subset=["starttime"])[["hadm_id", "starttime"]]
     abx = to_stays(orders if relaxed else crs.drop(columns="t"), stays, "hadm_id", "starttime",
                    lo=-S3.ABX_AFTER_CULTURE)
-    t_susp = S3.suspicion_times(cultures, abx)
+    episodes = S3.suspicion_episodes(cultures, abx)
+    t_susp = episodes.groupby("stay").t.min().rename("t_suspicion")   # first episode
+    susp = episodes if a.episodes == "all" else t_susp
 
     # --- hourly grid ---
     grid = G.frame()
@@ -298,10 +302,11 @@ def main():
     h["urine_24h"] = urine24.reindex(h.index)
     h = h.reset_index(drop=True)
 
-    h, onset = S3.score_and_label(h, t_susp)
+    h, onset, t_used = S3.score_and_label(h, susp)
 
     st = stays[["stay", "subject_id", "hadm_id", "hours"]].set_index("stay")
     st["t_suspicion"] = t_susp
+    st["t_suspicion_used"] = t_used
     st["onset"] = onset
     st["max_sofa"] = h.groupby("stay").sofa.max()
     hc, reasons = S3.challenge_cohort(h, onset)

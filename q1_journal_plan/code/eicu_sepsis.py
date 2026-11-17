@@ -187,6 +187,8 @@ def main():
     ap.add_argument("--root", default=str(DEFAULT_ROOT))
     ap.add_argument("--out", default=str(REPO / "outputs/sepsis_q1/eicu_demo"))
     ap.add_argument("--definition", choices=["relaxed", "challenge"], default="relaxed")
+    ap.add_argument("--episodes", choices=["all", "first"], default="all",
+                    help="suspicion episodes used for onset (sepsis3.py); 'first' is the rule before 2026-11-17")
     a = ap.parse_args()
     root, out = Path(a.root), Path(f"{a.out}_{a.definition}")
     cache = Path(f"{a.out}_cache")   # shared by both definitions
@@ -232,7 +234,9 @@ def main():
         ab = S3.courses(md, "stay", "a", "b", COURSE_GAP, COURSE_MIN)
     ab = ab.merge(stays[["stay", "hours"]], on="stay")
     abx = ab[(ab.t >= -S3.ABX_AFTER_CULTURE) & (ab.t <= ab.hours)]
-    t_susp = S3.suspicion_times(cultures, abx)
+    episodes = S3.suspicion_episodes(cultures, abx)
+    t_susp = episodes.groupby("stay").t.min().rename("t_suspicion")   # first episode
+    susp = episodes if a.episodes == "all" else t_susp
 
     # --- hourly features ---
     grid = S.grid.frame()
@@ -300,7 +304,7 @@ def main():
     h["urine_24h"] = (h.groupby("stay").urine.rolling(24, min_periods=24).sum()
                       .reset_index(level=0, drop=True).reindex(h.index))
     h = h.reset_index(drop=True)
-    h, onset = S3.score_and_label(h, t_susp)
+    h, onset, t_used = S3.score_and_label(h, susp)
 
     st = stays[["stay", "hospitalid", "hours"]].set_index("stay")
     st["has_abx"] = st.index.isin(abx.stay)
@@ -311,6 +315,7 @@ def main():
     hosp.to_csv(f"{out}_hospitals.csv")
     st["hospital_adequate"] = st.hospitalid.map(hosp.adequate)
     st["t_suspicion"] = t_susp
+    st["t_suspicion_used"] = t_used
     st["onset"] = onset
     st["max_sofa"] = h.groupby("stay").sofa.max()
     hc, reasons = S3.challenge_cohort(h, onset)

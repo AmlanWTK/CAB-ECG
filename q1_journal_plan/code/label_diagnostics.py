@@ -46,6 +46,9 @@ def report(path):
     sep = st[st.onset.notna()]
     print(f"  suspected infection {n(len(susp))} ({pct(len(susp), N)}); Sepsis-3 before cohort rules "
           f"{n(len(sep))} ({pct(len(sep), N)})")
+    if "t_suspicion_used" in st:
+        later = (sep.t_suspicion_used > sep.t_suspicion).sum()
+        print(f"  onset set by a later suspicion episode than the first: {n(later)} ({pct(later, len(sep))})")
 
     hb = [-np.inf, -24, 0, 4, 24, 72, np.inf]
     hl = ["before -24 h", "-24 to 0 h", "0 to 4 h", "4 to 24 h", "24 to 72 h", "72 h or later"]
@@ -58,7 +61,8 @@ def report(path):
 
     table("Sepsis-3 onset, from ICU admission", sep.onset, hb, hl)
     early = sep[sep.onset < S3_MIN_ONSET_HOUR]
-    by_susp = (early.onset == early.t_suspicion).sum()
+    used = early.t_suspicion_used if "t_suspicion_used" in early else early.t_suspicion
+    by_susp = (early.onset == used).sum()
     print(f"  onset under 4 h: {n(len(early))}; onset set by the suspicion time {n(by_susp)} "
           f"({pct(by_susp, len(early))}), by the SOFA rise {n(len(early) - by_susp)}")
 

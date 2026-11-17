@@ -211,3 +211,43 @@ Next: the relaxed definition, to see whether the strict suspicion rule is the bo
   administrations give **fewer** 72-h courses than orders (18 against 26), not more. If the full
   data agree, order-based courses do not undercount the Challenge's rule, and the antibiotic
   source does not explain check 1.
+
+**Round 3 results, full MIMIC-IV** (2026-11-17):
+
+- **Antibiotic source: ruled out.** `emar` covers 21,467 of 35,947 blood-culture ICU admissions
+  (59.7%). Within those, orders give a 72-h IV course in 64.9% and administrations in 47.1%.
+  Almost every administration course is also an order course (10,117 both, 3,807 orders only,
+  fewer than 10 administrations only). Suspected infection falls from 16.2% to 11.5% with
+  administrations, and where both find it the timing agrees (median difference 0.0 h). So
+  administrations would *lower* the septic share. The order-based courses stay, and
+  administration-based courses are a possible sensitivity analysis.
+- **Overlap failure (check 2): explained, and it exposes an extraction choice.** All 840
+  Challenge-septic stays that are not septic under the relaxed definition have an *earlier*
+  relaxed suspicion (median 75.8 h earlier). 389 then fall under the 4-h exclusion, and for 451
+  the SOFA window (24 h before to 12 h after suspicion) no longer covers the rise. The cause is
+  our rule that only the **first** culture-antibiotic pair of a stay counts. An earlier, unrelated
+  suspicion, often days before the ICU, then hides a later episode that does meet Sepsis-3. The
+  same rule affects the Challenge definition: suspicion more than 12 h before ICU admission can
+  never be followed by a rise we can see.
+- Proposed fix, written down before running it: evaluate every suspicion episode (every
+  qualifying culture-antibiotic pair) and set onset from the earliest episode with a qualifying
+  SOFA rise, keeping all other rules and every threshold. The Challenge paper's text ("clinical
+  suspicion of infection identified as the earlier timestamp of IV antibiotics and blood
+  cultures") does not say "first pair only". The result is reported whatever it is, against the
+  same ranges.
+
+**Implemented 2026-11-17** (`sepsis3.py`, both extractors):
+
+- `suspicion_episodes` returns every qualifying culture-antibiotic pair time per stay. `onset_times`
+  finds, for each episode, the first SOFA rise from 24 h before to 12 h after it (one
+  `merge_asof`), and the earliest episode with a rise sets the onset. Both extractors take
+  `--episodes all` (default) or `--episodes first` (the earlier rule). The per-stay table keeps
+  `t_suspicion` (the first episode) and adds `t_suspicion_used` (the episode that set the onset).
+- Checks: with `--episodes first`, all four demo runs (MIMIC-IV and eICU, both definitions)
+  reproduce the earlier per-stay labels exactly. Synthetic cases behave as intended. An episode
+  40 h before admission plus one at hour 20 with a rise at hour 22 gives onset 20 (first-only: not
+  septic). A rise 8 h before suspicion is kept, and a rise 17 h after suspicion is not.
+- Demo results with every episode (orientation only): MIMIC-IV Challenge definition 7 of 128
+  (5.5%, was 3.9%), relaxed 14 of 109 (12.8%, was 7.0%); eICU hospitals passing the recording
+  check, relaxed, 49 of 663 (7.4%, was 2.4%). In the MIMIC-IV relaxed demo, a later episode set
+  the onset in 11 of 41 Sepsis-3 stays.
