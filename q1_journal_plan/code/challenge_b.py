@@ -17,8 +17,15 @@ Run from the repository root after mimiciv_sepsis.py (--definition challenge) an
 (relaxed):
     python q1_journal_plan/code/challenge_b.py
 Writes outputs/sepsis_q1/B_harmonisation.md and B_harmonisation.csv.
+
+On the full data (check 5 of notes/label_check.md), harmonisation only, no dry run:
+    python q1_journal_plan/code/challenge_b.py --mimic outputs/sepsis_q1/mimiciv_full_challenge_challenge.pkl
+        --no-eicu --no-dry-run --name full
+Writes B_harmonisation_full.md / .csv. Everything printed and written is aggregate (shares and
+quartiles per variable), so it can be shared under the PhysioNet data use agreement.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -39,16 +46,17 @@ RATE_GAP = 2.0    # measured share differs from A by more than this factor
 MEDIAN_GAP = 0.5  # median differs from A's by more than this many of A's IQRs
 
 
-def sources():
-    """Stay-hour tables: Challenge A and B, our MIMIC-IV demo (Challenge rule) and eICU demo
-    (relaxed rule, hospitals passing the recording check)."""
+def sources(a):
+    """Stay-hour tables: Challenge A and B, our MIMIC-IV extraction (Challenge rule) and, unless
+    --no-eicu, eICU (relaxed rule, hospitals passing the recording check)."""
     ch = load_all()
-    mim = pd.read_pickle(OUT / "mimiciv_demo_challenge_challenge.pkl")
-    # eICU under the relaxed rule: the inputs do not depend on the rule, and its cohort is larger
-    eic = pd.read_pickle(OUT / "eicu_demo_relaxed_challenge.pkl")
-    hosp = pd.read_csv(OUT / "eicu_demo_relaxed_hospitals.csv", dtype={"hospitalid": str})
-    eic = eic[eic.site.isin(hosp[hosp.adequate].hospitalid)]
-    return {"A": ch[ch.site == "A"], "B": ch[ch.site == "B"], "MIMIC-IV demo": mim, "eICU demo": eic}
+    src = {"A": ch[ch.site == "A"], "B": ch[ch.site == "B"], a.mimic_name: pd.read_pickle(a.mimic)}
+    if not a.no_eicu:
+        # eICU under the relaxed rule: the inputs do not depend on the rule, and its cohort is larger
+        eic = pd.read_pickle(a.eicu)
+        hosp = pd.read_csv(a.eicu_hospitals, dtype={"hospitalid": str})
+        src[a.eicu_name] = eic[eic.site.isin(hosp[hosp.adequate].hospitalid)]
+    return src
 
 
 def describe(d):
@@ -114,24 +122,35 @@ def dry_run(mim, b):
 
 
 def main():
-    src = sources()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mimic", default=str(OUT / "mimiciv_demo_challenge_challenge.pkl"))
+    ap.add_argument("--eicu", default=str(OUT / "eicu_demo_relaxed_challenge.pkl"))
+    ap.add_argument("--eicu-hospitals", default=str(OUT / "eicu_demo_relaxed_hospitals.csv"))
+    ap.add_argument("--no-eicu", action="store_true")
+    ap.add_argument("--no-dry-run", action="store_true")
+    ap.add_argument("--name", default="", help="suffix for the output files, e.g. full")
+    a = ap.parse_args()
+    full = bool(a.name)
+    a.mimic_name, a.eicu_name = ("MIMIC-IV", "eICU") if full else ("MIMIC-IV demo", "eICU demo")
+    stem = "B_harmonisation" + (f"_{a.name}" if a.name else "")
+    src = sources(a)
     desc = {k: describe(d) for k, d in src.items()}
     st = pd.DataFrame({k: stays(d) for k, d in src.items()}).T
 
     wide = pd.concat({k: v for k, v in desc.items()}, axis=1)
-    wide.to_csv(OUT / "B_harmonisation.csv")
+    wide.to_csv(OUT / f"{stem}.csv")
 
     lines = ["# Challenge hospital B: harmonisation check and dry run", "",
              "Our extraction compared with the Challenge's processing. Hospital A is the MIMIC hospital "
              "in earlier years, so it is the reference for our MIMIC-IV extraction. Only inputs and stay "
-             "lengths are compared. The demos are small (MIMIC-IV demo about 130 stays), so small gaps "
-             f"mean little; flags use fixed gaps (measured share off by more than {RATE_GAP:g}x, or median "
+             "lengths are compared. " + ("" if full else "The demos are small (MIMIC-IV demo about 130 "
+             "stays), so small gaps mean little. ") + f"Flags use fixed gaps (measured share off by more than {RATE_GAP:g}x, or median "
              f"off by more than {MEDIAN_GAP:g} of A's IQR).", "", "## Stays", "",
              "| | stays | hours | median hours per stay | septic |", "|---|---|---|---|---|"]
     for k, r in st.iterrows():
         lines.append(f"| {k} | {int(r.stays):,} | {int(r.hours):,} | {r['median hours']:.0f} | {r.septic:.1%} |")
 
-    for name in ["MIMIC-IV demo", "eICU demo", "B"]:
+    for name in [k for k in src if k not in ("A", "B")] + ["B"]:
         f = flags(desc["A"], desc[name])
         lines += ["", f"## {name} against A: {len(f)} of {len(VARS)} variables flagged", ""]
         lines += [f"- {v}: {why}" for v, why in f] or ["None."]
@@ -142,8 +161,9 @@ def main():
         cells = [f"{desc[k].loc[v, 'measured']:.1%} ({desc[k].loc[v, 'median']:.3g})" for k in src]
         lines.append(f"| {v} | " + " | ".join(cells) + " |")
 
-    lines += ["", "## Dry run", "", dry_run(src["MIMIC-IV demo"], src["B"])]
-    (OUT / "B_harmonisation.md").write_text("\n".join(lines) + "\n")
+    if not a.no_dry_run:
+        lines += ["", "## Dry run", "", dry_run(src[a.mimic_name], src["B"])]
+    (OUT / f"{stem}.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
 

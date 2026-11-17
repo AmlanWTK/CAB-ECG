@@ -16,7 +16,9 @@ Follows the rules used to label the PhysioNet/CinC 2019 Challenge (Reyna et al.,
   episode that has such a rise sets the onset.
 - SepsisLabel: 1 from 6 h before onset onward, as in the Challenge.
 - Cohort: stays with at least 8 hours of data; stays with onset less than 4 h after ICU admission
-  excluded; stays truncated at 2 weeks (`challenge_cohort`).
+  excluded; stays truncated at 2 weeks, and septic stays at onset + 3 h (`challenge_cohort`). The
+  Challenge files end every septic stay there: in sets A and B each septic stay has 8-10 labelled
+  hours, i.e. from 6 h before onset to 3 h after (checked 2026-11-17, notes/sepsis_labels.md).
 
 Two definitions of suspected infection (decided 2026-10-30, notes/sepsis_labels.md); everything
 else above is shared:
@@ -38,6 +40,7 @@ SOFA_BEFORE, SOFA_AFTER = 24, 12
 SOFA_RISE_WINDOW = 24
 LABEL_LEAD = 6
 MIN_HOURS, MIN_ONSET_HOUR, MAX_HOURS = 8, 4, 14 * 24
+AFTER_ONSET = 3              # septic stays end 3 h after onset, as in the Challenge files
 
 
 def suspicion_episodes(cultures, antibiotics):
@@ -140,12 +143,14 @@ def sepsis_label(h, onset):
 
 def challenge_cohort(h, onset):
     """Apply the Challenge's cohort rules to the hourly table h (stay, hour, ...): drop stays with
-    fewer than MIN_HOURS hours or onset before MIN_ONSET_HOUR, and truncate at MAX_HOURS.
+    fewer than MIN_HOURS hours or onset before MIN_ONSET_HOUR, truncate at MAX_HOURS, and end
+    septic stays AFTER_ONSET hours after onset.
     Returns (hourly table, set of excluded stays with the reason)."""
     n_hours = h.groupby("stay").hour.max() + 1
     short = set(n_hours[n_hours < MIN_HOURS].index)
     early = set(onset[onset < MIN_ONSET_HOUR].index)
-    keep = ~h.stay.isin(short | early) & (h.hour < MAX_HOURS)
+    end = h.stay.map(onset) + AFTER_ONSET                 # NaN for non-septic stays: not truncated
+    keep = ~h.stay.isin(short | early) & (h.hour < MAX_HOURS) & ~(h.hour > end)
     reasons = {**{s: "under 8 h" for s in short}, **{s: "onset under 4 h" for s in early - short}}
     return h[keep], reasons
 

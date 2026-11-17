@@ -251,3 +251,52 @@ Next: the relaxed definition, to see whether the strict suspicion rule is the bo
   (5.5%, was 3.9%), relaxed 14 of 109 (12.8%, was 7.0%); eICU hospitals passing the recording
   check, relaxed, 49 of 663 (7.4%, was 2.4%). In the MIMIC-IV relaxed demo, a later episode set
   the onset in 11 of 41 Sepsis-3 stays.
+
+**Full MIMIC-IV with every episode** (2026-11-17):
+
+| | Challenge, first episode | Challenge, every episode | Relaxed, first episode | Relaxed, every episode |
+|---|---|---|---|---|
+| Sepsis-3 before cohort rules | 7,357 (7.8%) | 8,059 (8.5%) | 16,769 (17.8%) | 25,348 (26.8%) |
+| Onset set by a later episode | - | 702 | - | 8,579 |
+| Excluded, onset < 4 h | 4,497 | 4,707 | 11,319 | 14,655 |
+| Cohort, septic | 88,408, 2,857 (3.2%) | 88,198, 3,349 (3.8%) | 81,586, 5,439 (6.7%) | 78,250, 10,675 (13.6%) |
+| Onset median (IQR), h | 33.0 (8.2-103.7) | 40.0 (9.9-119.0) | 16.0 (6.2-46.0) | 20.0 (9.0-49.0) |
+
+Checks against the ranges fixed on 2026-10-31 (every-episode rule):
+
+1. Challenge definition within 5-13%: **fails**, 3.8%. The causes investigated were unit mix,
+   period, antibiotic source (orders against administrations) and the first-episode rule. Only
+   the last was an extraction issue, and fixing it raised the share from 3.2% to 3.8%. Per
+   `label_check.md`, this is reported as it stands. It does not affect the main analysis, which
+   uses the relaxed definition (decided 2026-10-30). The Challenge definition is the
+   sensitivity analysis.
+2. Relaxed at least the Challenge share (13.6% against 3.8%): **passes**. At least 80% of
+   Challenge-septic stays also septic under relaxed: **passes**, 84.2% (2,820 of 3,349; was
+   70.6%). All 529 that are not were excluded under relaxed for onset under 4 h, because an
+   earlier relaxed suspicion (median 64 h earlier) set the onset.
+3. eICU: not yet run.
+4. SOFA coverage close to the demo: passes. Onsets are not concentrated at the earliest allowed
+   hour (Challenge definition: onset median 40 h; relaxed: 20 h, IQR 9-49).
+5. Inputs against hospital A (`challenge_b.py`): not yet run on the full data. The script still
+   reads the demo tables and needs the Challenge files on the remote PC.
+
+The every-episode rule was adopted after checks 1 and 2 had failed, for the reason recorded above
+(an earlier, unrelated suspicion hid later episodes). The first-episode results are kept in this
+table, and the paper reports both.
+
+The relaxed definition labels 13.6% of cohort stays septic, and 27.2% of hours because stays are
+not truncated after onset. Before WP3, the Challenge-format export must truncate septic stays at
+onset + 3 h, as the Challenge does (round 2 finding).
+
+**Septic stays end at onset + 3 h** (2026-11-17). `sepsis3.challenge_cohort` now drops the hours
+after onset + 3 h (`AFTER_ONSET = 3`), so the hourly table and the Challenge-format export end
+where the Challenge files do. Patient-level counts (cohort, septic share) do not change. On the
+MIMIC-IV demo (Challenge definition), the 7 septic stays now have 8, 8, 8, 9, 10, 10 and 10
+labelled hours, the same 8-10 as sets A and B, and labelled hours fall from 5.8% to 0.7%. The
+full tables must be re-extracted (from cache) to apply this.
+
+**Check 5 on the full data.** `challenge_b.py` now takes `--mimic <pkl> --no-eicu --no-dry-run
+--name full` and writes `B_harmonisation_full.md`. The output is aggregate (share measured and
+quartiles per variable). It needs the open Challenge files on the remote PC
+(`scripts/download_sepsis2019.py`, about 42 MB, CC BY 4.0). The model dry run is skipped on the
+full data, because it would train a model and so belongs to WP3.
