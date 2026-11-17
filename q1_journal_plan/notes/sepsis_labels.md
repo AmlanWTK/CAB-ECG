@@ -127,3 +127,25 @@ Following the rule there, the extraction is investigated before anything else is
 range is not changed. First diagnostics: `code/label_diagnostics.py` on the per-stay tables
 (timing of suspected infection, suspected infection without a SOFA rise, what sets early onsets).
 Cause and fix to be recorded here.
+
+**Diagnostics, round 1** (`label_diagnostics.py`, Challenge definition):
+
+- Our rules match the Challenge paper's text (Reyna et al. 2020, PMC6964870): stays with fewer than
+  8 hourly windows and stays with onset less than 4 h after ICU admission are not included;
+  truncation at 2 weeks; suspicion and SOFA windows as coded. So the shortfall is not a rule error.
+- Before the cohort rules, 7.9% of stays of 8 h or more meet Sepsis-3 (7,354 of 92,905), inside the
+  5-13% range. The cohort rule removes 4,500 of them (61%) for onset under 4 h: 2,682 because
+  suspected infection (cultures and antibiotics) came before or soon after ICU admission, 1,818
+  because the SOFA rise did.
+- Suspected infection is often before ICU admission: 11.3% more than 24 h before, 18.4% in the
+  24 h before, 36.4% in the first 4 h.
+- Half of suspected infections (7,594 of 14,951) have no qualifying SOFA rise, although 56% of
+  those reach a SOFA of 6 or more. A rise must fall from 24 h before to 12 h after suspicion, and
+  SOFA exists only from ICU admission (earlier values are folded into hour 0), so a suspicion
+  more than 12 h before admission can never be followed by a rise, and a patient whose organ
+  dysfunction is already present on arrival shows none. These stays stay in the cohort as
+  non-septic; under the Challenge's intent they would be septic before the ICU and excluded.
+
+Open questions: whether the Challenge took cultures and antibiotics from before ICU admission
+(the paper does not say), and whether hospital A's cohort differs in unit mix or period.
+Round 2 adds the septic share by first ICU unit and by MIMIC-IV anchor year group (`--root`).

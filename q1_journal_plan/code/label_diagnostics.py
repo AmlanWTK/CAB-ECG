@@ -5,7 +5,7 @@ and prints aggregate counts only, so the output can be shared under the PhysioNe
 agreement: no stay identifiers, no row-level values, and any count from 1 to 9 is shown as "<10".
 
     python q1_journal_plan/code/label_diagnostics.py outputs/sepsis_q1/mimiciv_full_challenge_stays.csv
-        [outputs/sepsis_q1/mimiciv_full_relaxed_stays.csv]
+        [outputs/sepsis_q1/mimiciv_full_relaxed_stays.csv] [--root <MIMIC-IV folder>]
 
 With two files (Challenge and relaxed definitions of the same database), it also reports how far
 the two sets of septic stays overlap (check 2).
@@ -73,8 +73,36 @@ def report(path):
     return st
 
 
+def by_group(st, root):
+    """MIMIC-IV only: septic share of the Challenge cohort by first ICU unit and by anchor year group
+    (the 3-year period in which each patient's stays fall, MIMIC-IV's only date information)."""
+    from pathlib import Path
+    root = Path(root)
+    icu = pd.read_csv(root / "icu/icustays.csv.gz", usecols=["stay_id", "subject_id", "first_careunit"])
+    pts = pd.read_csv(root / "hosp/patients.csv.gz", usecols=["subject_id", "anchor_year_group"])
+    inc = st[st.excluded.isna()].merge(icu.rename(columns={"stay_id": "stay"})[["stay", "first_careunit"]],
+                                       on="stay", how="left").merge(pts, on="subject_id", how="left")
+    early = st[st.excluded.eq("onset under 4 h")].merge(icu.rename(columns={"stay_id": "stay"})[["stay", "first_careunit"]],
+                                                        on="stay", how="left").merge(pts, on="subject_id", how="left")
+    for col, title in [("first_careunit", "first ICU unit"), ("anchor_year_group", "anchor year group")]:
+        g = inc.groupby(col).septic.agg(["size", "sum"])
+        e = early.groupby(col).size()
+        print(f"  septic share of the cohort by {title} (and stays excluded for onset under 4 h)")
+        for k, r in g.sort_values("size", ascending=False).iterrows():
+            print(f"    {str(k)[:40]:>40}: {n(r['sum']):>7} of {n(r['size']):>7}  {pct(r['sum'], r['size']):>6}"
+                  f"   excluded early {n(e.get(k, 0)):>6}")
+
+
 def main():
-    a = [report(p) for p in sys.argv[1:]]
+    args = sys.argv[1:]
+    root = None
+    if "--root" in args:
+        i = args.index("--root")
+        root = args[i + 1]
+        args = args[:i] + args[i + 2:]
+    a = [report(p) for p in args]
+    if root:
+        by_group(a[0], root)
     if len(a) == 2:
         c, r = (x.set_index("stay").septic for x in a)
         both = (c & r.reindex(c.index, fill_value=False)).sum()
