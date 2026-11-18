@@ -28,11 +28,15 @@ MIMIC_CHART = {220045: "HR", 220277: "O2Sat", 223761: "Temp_F", 223762: "Temp", 
                220052: "MAP", 220181: "MAP", 225312: "MAP", 220051: "DBP", 220180: "DBP", 220210: "Resp",
                224690: "Resp", 228640: "EtCO2", 223835: "FiO2"}
 MIMIC_LAB = {50802: "BaseExcess", 50882: "HCO3", 50803: "HCO3", 50816: "FiO2", 50820: "pH", 50818: "PaCO2",
-             50817: "SaO2", 50878: "AST", 51006: "BUN", 50863: "Alkalinephos", 50893: "Calcium",
+             50878: "AST", 51006: "BUN", 50863: "Alkalinephos", 50893: "Calcium",
              50902: "Chloride", 50912: "Creatinine", 50883: "Bilirubin_direct", 50931: "Glucose",
              50809: "Glucose", 50813: "Lactate", 50960: "Magnesium", 50970: "Phosphate", 50971: "Potassium",
              50822: "Potassium", 50885: "Bilirubin_total", 51221: "Hct", 51222: "Hgb", 51275: "PTT",
              51301: "WBC", 51300: "WBC", 51214: "Fibrinogen", 51265: "Platelets"}
+# SaO2 is built in its own pass (mimiciv_sepsis.pass_sao2): blood gas oxygen saturation (50817)
+# only when the same specimen is arterial (specimen type 52033 = "ART."), plus charted arterial
+# O2 saturation (220227). 50817 also holds venous and mixed samples (median about 72 on the demo).
+MIMIC_SAO2_LAB, MIMIC_SPECIMEN_TYPE, MIMIC_SAO2_CHART = 50817, 52033, 220227
 MIMIC_UNITS = {"Medical Intensive Care Unit (MICU)": "MICU", "Surgical Intensive Care Unit (SICU)": "SICU"}
 
 # eICU: vitalPeriodic / vitalAperiodic columns and lab names

@@ -277,8 +277,9 @@ Checks against the ranges fixed on 2026-10-31 (every-episode rule):
 3. eICU: not yet run.
 4. SOFA coverage close to the demo: passes. Onsets are not concentrated at the earliest allowed
    hour (Challenge definition: onset median 40 h; relaxed: 20 h, IQR 9-49).
-5. Inputs against hospital A (`challenge_b.py`): not yet run on the full data. The script still
-   reads the demo tables and needs the Challenge files on the remote PC.
+5. Inputs against hospital A (`challenge_b.py`): run on the full data 2026-11-18, 3 of 36 flagged
+   (results below). EtCO2 and TroponinI explained; SaO2 traced to the item list and fixed
+   (2026-11-18), rerun pending.
 
 The every-episode rule was adopted after checks 1 and 2 had failed, for the reason recorded above
 (an earlier, unrelated suspicion hid later episodes). The first-episode results are kept in this
@@ -300,3 +301,67 @@ full tables must be re-extracted (from cache) to apply this.
 quartiles per variable). It needs the open Challenge files on the remote PC
 (`scripts/download_sepsis2019.py`, about 42 MB, CC BY 4.0). The model dry run is skipped on the
 full data, because it would train a model and so belongs to WP3.
+
+**Full MIMIC-IV after the onset + 3 h truncation** (2026-11-18, re-extracted from cache)
+
+| | Challenge definition | Relaxed definition |
+|---|---|---|
+| Cohort, septic | 88,198, 3,349 (3.8%) | 78,250, 10,675 (13.6%) |
+| Hourly rows | 6,129,257 | 4,153,742 |
+| Hours with SepsisLabel = 1 | 0.5% | 2.4% |
+
+Patient-level counts did not change, as expected. Labelled hours fell to 0.5% (Challenge
+definition), against 2.2% at hospital A. The difference comes from the lower septic share, not from
+the labelling window.
+
+In the Challenge-format files, 3.6% of stays have a SepsisLabel = 1 (`challenge_b.py` counts a
+stay as septic if any of its rows is labelled). The per-stay table gives 3.8%. The gap is about
+130 to 220 stays (3.6% is rounded). These stays have onset after hour 342. Their labels would start after the 2-week truncation,
+so their files contain no positive hour. The Challenge files work the same way. So **3.6% is the
+figure comparable with A (8.8%) and B (5.7%)**. The paper reports both and says why they differ.
+
+**Check 5 on the full data** (2026-11-18, `B_harmonisation_full.md`). MIMIC-IV against hospital A:
+3 of 36 variables are flagged. Hospital B against A: 11 of 36. Stays: 88,198, median 45 h per stay,
+against A's 39 h. The share of hours measured is within 2x of A's for 33 variables, and so is the
+median for 35.
+
+- EtCO2 (1.5% measured vs 0.0%): **explained**. The Challenge supplied no EtCO2 at hospital A at
+  all, so the gap is in their files, not in our extraction (B has 7.6%). Models compared with the
+  chapter see EtCO2 as missing at A whatever we do. For WP3 we will also run a sensitivity
+  analysis with EtCO2 blanked in MIMIC-IV.
+- TroponinI (0.0% vs 0.1%): **explained**. MIMIC-IV records troponin T, not troponin I (known gap,
+  `challenge_format.py`). A measured it in 0.1% of hours, so it carries almost no information
+  there either.
+- SaO2 (2.0% vs 5.0% measured; median 94 vs 97, A's IQR 93-98): **traced to the item list**. We
+  take every value of labevents 50817 ("Oxygen Saturation", blood gas). That item includes venous
+  and mixed samples, which pull the median down. We also take no charted arterial saturation,
+  which lowers coverage. Proposed fix, with no thresholds tuned: keep 50817 only when the same blood gas
+  specimen is marked arterial (specimen type 52033 = "ART."), and add chartevents 220227 (Arterial
+  O2 Saturation). This needs a new pass over labevents (the cache must be rebuilt for that table).
+  Then rerun check 5.
+- Not flagged but close: pH (6.1% vs 11.5%), PaCO2 (5.6% vs 8.8%) and Glucose (8.6% vs 12.2%) are
+  measured less often than at A, though within 2x. FiO2 (median 0.433 vs 0.5) is now inside A's IQR
+  (it was flagged on the demo).
+
+**SaO2 fix** (2026-11-18). SaO2 now comes from its own pass (`mimiciv_sepsis.pass_sao2`, cached as
+`sao2`): blood gas O2 saturation (50817) only when the same specimen's type (52033) is arterial,
+plus charted arterial O2 saturation (220227); values outside (0, 100] are dropped. All 50817 values
+are no longer in the labevents pass (`challenge_format.MIMIC_LAB`). A labevents cache built before
+this date still holds them, and the export drops that column (`HourlyAgg.without`), so the other
+caches stay valid.
+
+On the MIMIC-IV demo, 57% of blood gas saturations are arterial, 26% venous (median about 73),
+14% mixed (median 72) and 3% have no specimen type (excluded). SaO2 in the Challenge table:
+
+| | measured | median |
+|---|---|---|
+| Hospital A | 5.0% | 97 |
+| Demo, before | 1.4% | 95 |
+| Demo, after | 0.8% | 97 |
+
+So the fix brings the median to A's but lowers coverage further. The share of hours measured will
+probably stay flagged on the full data. That would be a difference in what was recorded: A
+measured SaO2 in 5.0% of hours against 11.5% for pH (a ratio of 0.43), while the demo now has
+0.8% against 5.8% (0.14). We do not widen the item list again to close the gap. The rule is
+fixed: a flag is explained or traced, and this one is traced. If it stays flagged, it is reported
+as a known difference.

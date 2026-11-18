@@ -140,6 +140,38 @@ def pass_lab(root, stays, grid):
     return lo, hi, chal, pd.concat(raw, ignore_index=True)
 
 
+def pass_sao2(root, stays, grid):
+    """SaO2 for the Challenge table: blood gas O2 saturation from arterial specimens only, and
+    charted arterial O2 saturation (challenge_format.MIMIC_SAO2_*). Hourly mean; values outside
+    (0, 100] dropped. Prints the share of blood gas saturations by specimen type (aggregate)."""
+    agg = BT.HourlyAgg("mean", grid, ["SaO2"], CHAL_DTYPE)
+    sat, spec = [], []
+    for c in BT.chunks(root / "hosp/labevents.csv.gz", ["specimen_id", "subject_id", "charttime", "itemid",
+                                                       "value", "valuenum"],
+                       items({CF.MIMIC_SAO2_LAB, CF.MIMIC_SPECIMEN_TYPE})):
+        sat.append(c[c.itemid == CF.MIMIC_SAO2_LAB].drop(columns=["itemid", "value"]))
+        spec.append(c[c.itemid == CF.MIMIC_SPECIMEN_TYPE][["specimen_id", "value"]])
+    sat = pd.concat(sat, ignore_index=True)
+    spec = pd.concat(spec, ignore_index=True).drop_duplicates("specimen_id").set_index("specimen_id").value
+    kind = sat.specimen_id.map(spec).fillna("").str.upper().str.strip()
+    kind = np.select([kind.str.startswith("ART"), kind.str.startswith("VEN") | kind.str.contains("VENOUS"),
+                      kind.str.startswith("MIX"), kind.eq("")], ["arterial", "venous", "mixed", "no type"], "other")
+    print("  blood gas O2 saturation by specimen type: " + ", ".join(
+        f"{k} {v / len(sat):.0%}" for k, v in pd.Series(kind).value_counts().items()), flush=True)
+    x = to_stays(sat[kind == "arterial"], stays, "subject_id", "charttime", lo=0)
+    ok = x.valuenum.between(0, 100) & (x.valuenum > 0)
+    agg.add(pd.DataFrame({"stay": x.stay[ok], "hour": hour_of(x.t[ok]), "var": "SaO2", "value": x.valuenum[ok]}))
+    intime = stays.set_index("stay").intime
+    for c in BT.chunks(root / "icu/chartevents.csv.gz", ["stay_id", "charttime", "itemid", "valuenum"],
+                       items({CF.MIMIC_SAO2_CHART})):
+        c = c[c.stay_id.isin(intime.index)]
+        t = (pd.to_datetime(c.charttime) - c.stay_id.map(intime)).dt.total_seconds() / 3600
+        ok = (t >= 0) & (c.valuenum > 0) & (c.valuenum <= 100)
+        agg.add(pd.DataFrame({"stay": c.stay_id[ok], "hour": hour_of(t[ok]), "var": "SaO2",
+                              "value": c.valuenum[ok]}))
+    return agg
+
+
 def pass_urine(root, stays, grid):
     intime = stays.set_index("stay").intime
     urine = BT.HourlyAgg("sum", grid, ["urine"])
@@ -316,7 +348,10 @@ def main():
     hc.to_csv(f"{out}_hourly.csv.gz", index=False)
 
     S3.summary(st, hc)
-    export_challenge(root, stays, grid, hc, out, BT.HourlyAgg.merged([ch_chal, lab_chal]))
+    # SaO2 from its own pass; a labevents cache built before 2026-11-18 still holds all 50817 values
+    sao2 = BT.cached(cache, "sao2", lambda: pass_sao2(root, stays, G))
+    export_challenge(root, stays, grid, hc, out,
+                     BT.HourlyAgg.merged([ch_chal, lab_chal.without("SaO2"), sao2]))
 
 if __name__ == "__main__":
     main()

@@ -113,6 +113,18 @@ class HourlyAgg:
                 out.acc[:, j] = np.maximum(out.acc[:, j], a.acc)
         return out
 
+    def without(self, var):
+        """The same aggregate without one variable (e.g. one rebuilt in a separate pass)."""
+        if var not in self.code:
+            return self
+        keep = [i for i, v in enumerate(self.vars) if v != var]
+        out = HourlyAgg.__new__(HourlyAgg)
+        out.how, out.grid, out.vars = self.how, self.grid, [self.vars[i] for i in keep]
+        out.code = {v: i for i, v in enumerate(out.vars)}
+        out.acc = self.acc[:, keep]
+        out.cnt = self.cnt[:, keep] if self.cnt is not None else None
+        return out
+
     def values(self, dtype=np.float32):
         if self.how == "mean":
             with np.errstate(invalid="ignore", divide="ignore"):
