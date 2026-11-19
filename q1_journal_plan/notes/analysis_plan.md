@@ -1,10 +1,9 @@
 # Analysis plan: multi-hospital sepsis transfer study (WP3, WP9)
 
-Draft 1, 2026-10-30, updated 2026-10-31 (false-alert limit and recording thresholds decided;
-monitoring added; monitoring guarantee and label-check ranges confirmed). To be fixed and dated before any model is run on the full eICU-CRD or
-MIMIC-IV data. Items marked **[decide]** are open; items marked **[from counts]** may be set after
-looking at cohort sizes and septic counts per hospital, which say nothing about model performance.
-Any change after the first full run is listed in the paper as a deviation.
+Draft 2, **fixed 2026-11-19**, before any model was run on the full eICU-CRD or MIMIC-IV data
+(draft 1: 2026-10-30, updated 2026-10-31). No item is left open. Items marked **[rule]** are
+decided as rules applied mechanically to cohort sizes and septic counts per hospital, which say
+nothing about model performance. Any change after this date is listed in the paper as a deviation.
 
 ## 1. Question
 
@@ -34,6 +33,16 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
   earlier years: 8.8%); the relaxed rule at least as high and mostly containing the Challenge
   rule's cases; eICU hospitals passing the recording check within 3-15%; SOFA coverage close to
   the demos. A failure is investigated and documented, not tuned away.
+- Changes to the labels before this plan was fixed (all on MIMIC-IV, before any model was run;
+  `notes/sepsis_labels.md`). (a) Onset is set by the earliest suspicion episode that has a
+  qualifying SOFA rise, not only by the first episode. This was adopted on 2026-11-17 after
+  checks 1 and 2 had failed, because an earlier, unrelated suspicion hid later episodes. The
+  paper reports both rules. (b) Septic stays end at onset + 3 h, as in the Challenge files.
+  (c) SaO2 comes from arterial blood gases and charted arterial saturation only.
+- Label check results on full MIMIC-IV (2026-11-18): check 1 fails (Challenge rule 3.8% of
+  stays, 3.6% with a labelled hour, against 5-13%) and is reported as found; check 2 passes
+  (relaxed 13.6%; overlap 84.2%); check 4 passes; check 5 passes (3 of 36 inputs flagged, each
+  explained or fixed). Check 3 (eICU) is still to run.
 
 ## 4. Hospitals and transfers
 
@@ -43,11 +52,19 @@ usual alternatives compare, across many real hospital-to-hospital transfers?
   In the demo, 85 of 186 hospitals record no cultures at all, but with a median of 12 stays per
   hospital the demo cannot place the cut more finely.
 - A target must have enough septic stays to judge safety: at least 50 septic stays in the cohort
-  (the ECG study's judging rule). **[from counts]** With about 2-3% of cohort stays septic, few
-  single eICU hospitals reach this; if fewer than about 20 do, targets are hospital groups
-  (region x bed-size category, or region alone) **[decide]**.
-- Sources: MIMIC-IV, and the eICU hospitals or groups with the most septic stays, each split
-  into train / validation / home-test by patient as in the chapter.
+  under the primary (relaxed) labels (the ECG study's judging rule).
+- Targets **[rule]**, applied in this order to the hospitals that pass the recording check:
+  1. If at least 20 single hospitals have 50 or more septic stays, those hospitals are the
+     targets. Hospitals below 50 are not pooled.
+  2. Otherwise, targets are groups of the passing hospitals by region x bed-size category (eICU
+     `hospital` table: `region`, `numbedscategory`). Groups with 50 or more septic stays are
+     targets.
+  3. If fewer than 20 groups qualify under step 2, the groups are by region alone.
+  Hospitals with region or bed size missing are left out of groups. The step reached and the
+  counts at each step are reported.
+- Sources **[rule]**: MIMIC-IV, and the five targets with the most septic stays (ties broken by
+  more cohort stays). Each is split into train / validation / home-test by patient as in the
+  chapter, and each remains a target for the other sources.
 - Transfers: every source to every eligible target outside its own system; plus home controls.
 - MIMIC-IV temporal split for WP8: earlier anchor-year groups as source, later as target.
 - Open external target (added 2026-10-31): PhysioNet/CinC 2019 Challenge hospital B (Emory;
@@ -95,9 +112,13 @@ domain adaptation (label-free, and recalibrated).
 
 ## 8. Experiment
 
-- Label budgets: 50, 100, 200, 400, 800, 1,600 patients, capped at half of the target's eligible
-  patients. **[from counts]**
-- 100 random repeats per transfer and budget; seeds fixed in advance.
+- Label budgets **[rule]**: 50, 100, 200, 400, 800, 1,600 patients. A budget is used for a target
+  only if it is at most half of the target's cohort stays. Every target has at least 50 septic
+  stays and so at least a few hundred stays, so every target gets the smallest budgets.
+- 100 random repeats per transfer and budget. Repeat r draws its labelled patients with seed r
+  (0 to 99). Each source model is trained once, with seed 0 for its train / validation /
+  home-test split and for LightGBM. The second-training-seed sensitivity analysis (section 10)
+  uses seed 1.
 - Judge: the whole target cohort (the population the labels are drawn from), less records used to
   fit an adapted model; sensitivity analysis on the unlabelled patients only. Decided for the ECG
   study (`notes/ecg_design.md`); applies here.
@@ -136,11 +157,11 @@ second training seed; eICU hospitals that fail the recording check, reported sep
 
 TRIPOD+AI checklist; code and this plan released with the paper; every deviation listed.
 
-## To decide before the full run
+## Decisions
 
-1. Targets: single hospitals or groups, once septic counts per hospital are known. Challenge
-   hospital B is a target in any case (section 4).
-2. Label budgets, once target sizes are known.
+Fixed 2026-11-19: targets, sources and label budgets as rules (sections 4 and 8); seeds 0-99
+(section 8); label changes and check results recorded (section 3). Challenge hospital B is a
+target in any case (section 4).
 
 Decided 2026-10-30: recording thresholds 20% / 10% (section 4); false-alert limit home + 0.05
 (section 6). Decided 2026-10-31: label-check ranges as written (section 3); monitoring guarantee,
