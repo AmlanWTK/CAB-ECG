@@ -278,8 +278,9 @@ Checks against the ranges fixed on 2026-10-31 (every-episode rule):
 4. SOFA coverage close to the demo: passes. Onsets are not concentrated at the earliest allowed
    hour (Challenge definition: onset median 40 h; relaxed: 20 h, IQR 9-49).
 5. Inputs against hospital A (`challenge_b.py`): run on the full data 2026-11-18, 3 of 36 flagged
-   (results below). EtCO2 and TroponinI explained; SaO2 traced to the item list and fixed
-   (2026-11-18), rerun pending.
+   (results below). **passes** under the pre-set rule: EtCO2 and
+   TroponinI explained; SaO2 traced to the item list and fixed (median now 97, as at A). Its share
+   of hours measured stays flagged as a recorded difference (see the SaO2 fix, full data).
 
 The every-episode rule was adopted after checks 1 and 2 had failed, for the reason recorded above
 (an earlier, unrelated suspicion hid later episodes). The first-episode results are kept in this
@@ -365,3 +366,20 @@ measured SaO2 in 5.0% of hours against 11.5% for pH (a ratio of 0.43), while the
 0.8% against 5.8% (0.14). We do not widen the item list again to close the gap. The rule is
 fixed: a flag is explained or traced, and this one is traced. If it stays flagged, it is reported
 as a known difference.
+
+**SaO2 fix, full data** (2026-11-19). Blood gas O2 saturations by specimen type: arterial 59%,
+mixed 23%, venous 16%, no type 2%. Septic counts unchanged (3,349 and 10,675), as expected.
+
+| SaO2 | measured | median |
+|---|---|---|
+| Hospital A | 5.0% | 97 |
+| Hospital B | 1.9% | 97.5 |
+| MIMIC-IV, before | 2.0% | 94 |
+| MIMIC-IV, after | 1.3% | 97 |
+
+Check 5 still flags 3 of 36 (EtCO2, SaO2, TroponinI), and B flags 11. The SaO2 median flag is gone. The share
+measured is still flagged (1.3% vs 5.0%). Relative to pH, A recorded SaO2 in 0.43 as many hours, and
+MIMIC-IV now in 0.21. The extra values at A were probably charted saturations or unspecified
+samples, which MIMIC-IV does not have under these items. B also falls short of A (1.9%). No further
+change to the item list. **Check 5 passes** under its pre-set rule: each flag is explained (EtCO2,
+TroponinI, the SaO2 share) or traced and fixed (the SaO2 values). The paper lists all three.
